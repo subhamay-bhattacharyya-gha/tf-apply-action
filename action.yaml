@@ -91,28 +91,8 @@ runs:
         echo "| Resource Address        | Action     | Resource Type     | Resource Name     | Timestamp               |" >> "$GITHUB_STEP_SUMMARY"
         echo "|--------------------------|------------|--------------------|--------------------|--------------------------|" >> "$GITHUB_STEP_SUMMARY"
 
-        terraform output -json "${{ inputs.terraform-plan-file }}" > tfoutput.json
-
+        terraform output -json > tfoutput.json
         cat tfoutput.json| jq -r 
-
-        # jq -r --arg timestamp "$TIMESTAMP" '
-        #   .resource_changes[] |
-        #   select(.change.actions != ["no-op"]) |
-        #   [
-        #     .address,
-        #     (if .change.actions | index("create") then "create"
-        #     elif .change.actions | index("update") then "update"
-        #     elif .change.actions | index("delete") then "delete"
-        #     else (.change.actions | join(","))
-        #     end),
-        #     .type,
-        #     .name,
-        #     $timestamp
-        #   ] |
-        #   @tsv
-        # ' tfoutput.json | while IFS=$'\t' read -r address action type name timestamp; do
-        #   echo "| $address | $action | $type | $name | $timestamp |" >> "$GITHUB_STEP_SUMMARY"
-        # done
 
         echo "" >> "$GITHUB_STEP_SUMMARY"
         TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
