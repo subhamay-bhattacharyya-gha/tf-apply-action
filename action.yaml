@@ -72,19 +72,10 @@ runs:
           -backend-config="encrypt=true" \
           -backend-config="dynamodb_table=${{ inputs.dynamodb-table }}"
 
-    # - name: Convert Terraform plan to JSON
-    #   shell: bash
-    #   working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
-    #   run: |
-    #     cp ../plan-artifact/${{ inputs.terraform-plan-file }} tfplan.out
-    #     terraform show -json tfplan.out > plan.json
-
-
     - name: Terraform Apply
       id: apply
       run: |
         cd "${{ github.workspace }}/${{ inputs.terraform-dir }}"
-        cp ../plan-artifact/${{ inputs.terraform-plan-file }} tfplan.out
 
         TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 
@@ -92,54 +83,34 @@ runs:
         echo "_**Started at: ${TIMESTAMP}**_" >> "$GITHUB_STEP_SUMMARY"
         echo "" >> "$GITHUB_STEP_SUMMARY"
 
-        terraform apply -input=false -auto-approve "${{ inputs.terraform-plan-file }}" | tee apply_output.txt
-
-        # Extract summary counts
-        SUMMARY_LINE=$(grep -E "Apply complete! Resources: .* added, .* changed, .* destroyed." apply_output.txt || true)
-        ADDED=$(echo "$SUMMARY_LINE" | grep -Eo "[0-9]+ added" | cut -d' ' -f1)
-        CHANGED=$(echo "$SUMMARY_LINE" | grep -Eo "[0-9]+ changed" | cut -d' ' -f1)
-        DESTROYED=$(echo "$SUMMARY_LINE" | grep -Eo "[0-9]+ destroyed" | cut -d' ' -f1)
-
-        ADDED=${ADDED:-0}
-        CHANGED=${CHANGED:-0}
-        DESTROYED=${DESTROYED:-0}
+        terraform apply -input=false -auto-approve "${{ inputs.terraform-plan-file }}"
 
         echo "" >> "$GITHUB_STEP_SUMMARY"
-        echo "| Action   | Count |" >> "$GITHUB_STEP_SUMMARY"
-        echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
-        echo "| Added    | $ADDED |" >> "$GITHUB_STEP_SUMMARY"
-        echo "| Changed  | $CHANGED |" >> "$GITHUB_STEP_SUMMARY"
-        echo "| Destroyed| $DESTROYED |" >> "$GITHUB_STEP_SUMMARY"
-
+        echo "### Affected Resources from Plan JSON" >> "$GITHUB_STEP_SUMMARY"
         echo "" >> "$GITHUB_STEP_SUMMARY"
-        echo "### Affected Resources with IDs and Timestamp" >> "$GITHUB_STEP_SUMMARY"
-        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Resource Address        | Action     | Resource Type     | Resource Name     | Timestamp               |" >> "$GITHUB_STEP_SUMMARY"
+        echo "|--------------------------|------------|--------------------|--------------------|--------------------------|" >> "$GITHUB_STEP_SUMMARY"
 
-        awk -v timestamp="$TIMESTAMP" '
-          BEGIN {
-            print "| Resource Type | Resource Name     | Action     | Resource ID                        | Timestamp               |"
-            print "|---------------|--------------------|------------|-------------------------------------|--------------------------|"
-          }
-          /^[[:space:]]*[a-zA-Z0-9_]+\.[a-zA-Z0-9_\.]+: (Creating|Modifying|Destroying)/ {
-            match($0, /^[[:space:]]*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\.]+): (Creating|Modifying|Destroying)/, res)
-            if (res[1] && res[2] && res[3]) {
-              key = res[1] "." res[2]
-              ids[key] = res[3]
-            }
-          }
-          /^[[:space:]]*[a-zA-Z0-9_]+\.[a-zA-Z0-9_\.]+: (Creation|Modification|Destruction) complete/ {
-            match($0, /\[id=([^\]]+)\]/, idmatch)
-            match($0, /^[[:space:]]*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\.]+):/, res)
-            if (res[1] && res[2]) {
-              key = res[1] "." res[2]
-              type = res[1]
-              name = res[2]
-              id = (idmatch[1] != "") ? idmatch[1] : "n/a"
-              action = (ids[key] != "") ? ids[key] : "Unknown"
-              printf("| %-13s | %-18s | %-10s | %-35s | %-24s |\n", type, name, action, id, timestamp)
-            }
-          }
-        ' apply_output.txt >> "$GITHUB_STEP_SUMMARY"
+        terraform show -json "${{ inputs.terraform-plan-file }}" > plan.json
+
+        jq -r --arg timestamp "$TIMESTAMP" '
+          .resource_changes[] |
+          select(.change.actions != ["no-op"]) |
+          [
+            .address,
+            (if .change.actions | index("create") then "create"
+            elif .change.actions | index("update") then "update"
+            elif .change.actions | index("delete") then "delete"
+            else (.change.actions | join(","))
+            end),
+            .type,
+            .name,
+            $timestamp
+          ] |
+          @tsv
+        ' plan.json | while IFS=$'\t' read -r address action type name timestamp; do
+          echo "| $address | $action | $type | $name | $timestamp |" >> "$GITHUB_STEP_SUMMARY"
+        done
 
         echo "" >> "$GITHUB_STEP_SUMMARY"
         TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
