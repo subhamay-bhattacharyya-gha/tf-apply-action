@@ -74,9 +74,9 @@ runs:
 
     - name: Terraform Apply
       id: apply
+      working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
       run: |
         cp ../plan-artifact/${{ inputs.terraform-plan-file }} tfplan.out
-        cd "${{ github.workspace }}/${{ inputs.terraform-dir }}"
 
         TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 
