@@ -98,6 +98,7 @@ runs:
 
         terraform apply -input=false -auto-approve "${{ inputs.terraform-plan-file }}" | tee apply_output.txt
 
+        # Extract summary counts
         SUMMARY_LINE=$(grep -E "Apply complete! Resources: .* added, .* changed, .* destroyed." apply_output.txt || true)
         ADDED=$(echo "$SUMMARY_LINE" | grep -Eo "[0-9]+ added" | cut -d' ' -f1)
         CHANGED=$(echo "$SUMMARY_LINE" | grep -Eo "[0-9]+ changed" | cut -d' ' -f1)
@@ -123,20 +124,29 @@ runs:
             print "| Resource Type | Resource Name     | Action     | Resource ID                        | Timestamp               |"
             print "|---------------|--------------------|------------|-------------------------------------|--------------------------|"
           }
-          /^[a-zA-Z0-9_]+\.[a-zA-Z0-9_\.]+: (Creating|Modifying|Destroying)/ {
-            match($0, /^([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\.]+): (Creating|Modifying|Destroying)/, res)
-            key = res[1] "." res[2]
-            ids[key] = res[3]
+          /^[[:space:]]*[a-zA-Z0-9_]+\.[a-zA-Z0-9_\.]+: (Creating|Modifying|Destroying)/ {
+            match($0, /^[[:space:]]*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\.]+): (Creating|Modifying|Destroying)/, res)
+            if (res[1] && res[2] && res[3]) {
+              key = res[1] "." res[2]
+              ids[key] = res[3]
+            }
           }
-          /^[a-zA-Z0-9_]+\.[a-zA-Z0-9_\.]+: (Creation|Destruction|Modification) complete/ {
+          /^[[:space:]]*[a-zA-Z0-9_]+\.[a-zA-Z0-9_\.]+: (Creation|Modification|Destruction) complete/ {
             match($0, /\[id=([^\]]+)\]/, idmatch)
-            match($0, /^([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\.]+):/, res)
-            key = res[1] "." res[2]
-            type = res[1]
-            name = res[2]
-            id = (idmatch[1] != "") ? idmatch[1] : "n/a"
-            action = (ids[key] != "") ? ids[key] : "Unknown"
-            printf("| %-13s | %-18s | %-10s | %-35s | %-24s |\n", type, name, action, id, timestamp)
+            match($0, /^[[:space:]]*([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\.]+):/, res)
+            if (res[1] && res[2]) {
+              key = res[1] "." res[2]
+              type = res[1]
+              name = res[2]
+              id = (idmatch[1] != "") ? idmatch[1] : "n/a"
+              action = (ids[key] != "") ? ids[key] : "Unknown"
+              printf("| %-13s | %-18s | %-10s | %-35s | %-24s |\n", type, name, action, id, timestamp)
+            }
           }
         ' apply_output.txt >> "$GITHUB_STEP_SUMMARY"
+
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
+        echo "_**Completed at: ${TIMESTAMP}**_" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
       shell: bash
