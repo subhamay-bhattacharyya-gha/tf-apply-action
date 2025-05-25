@@ -92,15 +92,11 @@ runs:
 
         TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
 
-        echo "## 🚀 Terraform Apply Output" >> $GITHUB_STEP_SUMMARY
-        echo "_Started at: $TIMESTAMP_" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 Terraform Apply Output" >> "$GITHUB_STEP_SUMMARY"
+        echo "_**Started at: ${TIMESTAMP}**_" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
 
         terraform apply -input=false -auto-approve "${{ inputs.terraform-plan-file }}" | tee apply_output.txt
-
-        echo '```' >> $GITHUB_STEP_SUMMARY
-        cat apply_output.txt >> $GITHUB_STEP_SUMMARY
-        echo '```' >> $GITHUB_STEP_SUMMARY
 
         SUMMARY_LINE=$(grep -E "Apply complete! Resources: .* added, .* changed, .* destroyed." apply_output.txt || true)
         ADDED=$(echo "$SUMMARY_LINE" | grep -Eo "[0-9]+ added" | cut -d' ' -f1)
@@ -111,16 +107,16 @@ runs:
         CHANGED=${CHANGED:-0}
         DESTROYED=${DESTROYED:-0}
 
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Action   | Count |" >> $GITHUB_STEP_SUMMARY
-        echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-        echo "| Added    | $ADDED |" >> $GITHUB_STEP_SUMMARY
-        echo "| Changed  | $CHANGED |" >> $GITHUB_STEP_SUMMARY
-        echo "| Destroyed| $DESTROYED |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Action   | Count |" >> "$GITHUB_STEP_SUMMARY"
+        echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Added    | $ADDED |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Changed  | $CHANGED |" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Destroyed| $DESTROYED |" >> "$GITHUB_STEP_SUMMARY"
 
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Affected Resources with IDs and Timestamp" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "### Affected Resources with IDs and Timestamp" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
 
         awk -v timestamp="$TIMESTAMP" '
           BEGIN {
@@ -128,26 +124,19 @@ runs:
             print "|---------------|--------------------|------------|-------------------------------------|--------------------------|"
           }
           /^[a-zA-Z0-9_]+\.[a-zA-Z0-9_\.]+: (Creating|Modifying|Destroying)/ {
-            split($0, parts, ":")
-            split(parts[1], res, ".")
-            type=res[1]
-            name=res[2]
-            action=tolower($2)
-            if (action ~ /Creating/) action="Creating"
-            else if (action ~ /Modifying/) action="Modifying"
-            else if (action ~ /Destroying/) action="Destroying"
-            ids[parts[1]] = action
+            match($0, /^([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\.]+): (Creating|Modifying|Destroying)/, res)
+            key = res[1] "." res[2]
+            ids[key] = res[3]
           }
           /^[a-zA-Z0-9_]+\.[a-zA-Z0-9_\.]+: (Creation|Destruction|Modification) complete/ {
             match($0, /\[id=([^\]]+)\]/, idmatch)
-            if (idmatch[1] != "") {
-              split($0, parts, ":")
-              key = parts[1]
-              id = idmatch[1]
-              type=substr(key, 1, index(key, ".")-1)
-              name=substr(key, index(key, ".")+1)
-              printf("| %-13s | %-18s | %-10s | %-35s | %-24s |\n", type, name, ids[key], id, timestamp)
-            }
+            match($0, /^([a-zA-Z0-9_]+)\.([a-zA-Z0-9_\.]+):/, res)
+            key = res[1] "." res[2]
+            type = res[1]
+            name = res[2]
+            id = (idmatch[1] != "") ? idmatch[1] : "n/a"
+            action = (ids[key] != "") ? ids[key] : "Unknown"
+            printf("| %-13s | %-18s | %-10s | %-35s | %-24s |\n", type, name, action, id, timestamp)
           }
-        ' apply_output.txt >> $GITHUB_STEP_SUMMARY
+        ' apply_output.txt >> "$GITHUB_STEP_SUMMARY"
       shell: bash
