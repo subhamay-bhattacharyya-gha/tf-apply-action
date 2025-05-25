@@ -83,7 +83,7 @@ runs:
         echo "_**Started at: ${TIMESTAMP}**_" >> "$GITHUB_STEP_SUMMARY"
         echo "" >> "$GITHUB_STEP_SUMMARY"
 
-        terraform apply -input=false -auto-approve "${{ inputs.terraform-plan-file }}"
+        terraform apply -input=false -auto-approve plan-artifact/${{ inputs.terraform-plan-file }} || exit 1
 
         echo "" >> "$GITHUB_STEP_SUMMARY"
         echo "### Affected Resources from Plan JSON" >> "$GITHUB_STEP_SUMMARY"
