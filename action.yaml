@@ -92,8 +92,18 @@ runs:
         echo "| Resource Address        | Action     | Resource Type     | Resource Name     | Timestamp               |" >> "$GITHUB_STEP_SUMMARY"
         echo "|--------------------------|------------|--------------------|--------------------|--------------------------|" >> "$GITHUB_STEP_SUMMARY"
 
-        terraform output -json > tfoutput.json
-        cat tfoutput.json| jq -r 
+        # Terraform Outputs Section
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "### Terraform Outputs" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+
+        terraform output -json > tf_output.json
+
+        echo "| Name | Value |" >> "$GITHUB_STEP_SUMMARY"
+        echo "|------|-------|" >> "$GITHUB_STEP_SUMMARY"
+
+        jq -r 'to_entries[] | 
+          "| \(.key) | \(.value.value)"' tf_output.json >> "$GITHUB_STEP_SUMMARY"
 
         echo "" >> "$GITHUB_STEP_SUMMARY"
         TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
