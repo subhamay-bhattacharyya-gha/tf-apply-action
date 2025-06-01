@@ -2,7 +2,7 @@ name: 'Terraform Apply and Summary'
 description: 'Applies Terraform plan and writes a grouped resource summary with IDs and timestamp to GitHub Step Summary.'
 
 inputs:
-  artifact-name:
+  terraform-plan-file:
     description: 'Name of the uploaded Terraform plan artifact'
     required: true
     default: 'terraform-plan'
@@ -43,7 +43,7 @@ runs:
     - name: Download Terraform plan artifact
       uses: actions/download-artifact@v4
       with:
-        name: ${{ inputs.artifact-name }}
+        name: ${{ inputs.terraform-plan-file }}
         path: plan-artifact
 
     - name: Setup Terraform
@@ -71,29 +71,42 @@ runs:
           -backend-config="encrypt=true" \
           -backend-config="use_lockfile=true"
 
-    - name: Terraform Apply
+    - name: Terraform Apply with Summary
       id: apply
       working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
       run: |
+        # Copy the plan file from the downloaded artifact
         cp ../plan-artifact/${{ inputs.terraform-plan-file }} tfplan.out
 
-        TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
+        # Check if the plan file exists
+        if [ ! -f tfplan.out ]; then
+          echo "❌ Plan file not found. Exiting."
+          exit 1
+        fi
 
+        START_TIME=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
         echo "## 🚀 Terraform Apply Output" >> "$GITHUB_STEP_SUMMARY"
-        echo "_**Started at: ${TIMESTAMP}**_" >> "$GITHUB_STEP_SUMMARY"
+        echo "_**Started at: ${START_TIME}**_" >> "$GITHUB_STEP_SUMMARY"
         echo "" >> "$GITHUB_STEP_SUMMARY"
 
-        terraform apply -input=false -auto-approve tfplan.out || exit 1
+        # Apply the saved plan
+        terraform apply -input=false -auto-approve tfplan.out
 
         echo "" >> "$GITHUB_STEP_SUMMARY"
-        echo "### Affected Resources from Plan JSON" >> "$GITHUB_STEP_SUMMARY"
+        echo "### 📌 Affected Resources" >> "$GITHUB_STEP_SUMMARY"
         echo "" >> "$GITHUB_STEP_SUMMARY"
-        echo "| Resource Address        | Action     | Resource Type     | Resource Name     | Timestamp               |" >> "$GITHUB_STEP_SUMMARY"
-        echo "|--------------------------|------------|--------------------|--------------------|--------------------------|" >> "$GITHUB_STEP_SUMMARY"
+        echo "| Resource Address | Action | Resource Type | Resource Name |" >> "$GITHUB_STEP_SUMMARY"
+        echo "|------------------|--------|---------------|----------------|" >> "$GITHUB_STEP_SUMMARY"
 
-        # Terraform Outputs Section
+        # Parse affected resources from the plan
+        terraform show -json tfplan.out | jq -r '
+          .resource_changes[] | 
+          select(.change.actions != ["no-op"]) |
+          "| \(.address) | \(.change.actions[0]) | \(.type) | \(.name) |"
+        ' >> "$GITHUB_STEP_SUMMARY"
+
         echo "" >> "$GITHUB_STEP_SUMMARY"
-        echo "### Terraform Outputs" >> "$GITHUB_STEP_SUMMARY"
+        echo "### 📤 Terraform Outputs" >> "$GITHUB_STEP_SUMMARY"
         echo "" >> "$GITHUB_STEP_SUMMARY"
 
         terraform output -json > tf_output.json
@@ -105,7 +118,6 @@ runs:
           "| \(.key) | \(.value.value)"' tf_output.json >> "$GITHUB_STEP_SUMMARY"
 
         echo "" >> "$GITHUB_STEP_SUMMARY"
-        TIMESTAMP=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
-        echo "_**Completed at: ${TIMESTAMP}**_" >> "$GITHUB_STEP_SUMMARY"
-        echo "" >> "$GITHUB_STEP_SUMMARY"
+        END_TIME=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
+        echo "_**Completed at: ${END_TIME}**_" >> "$GITHUB_STEP_SUMMARY"
       shell: bash
