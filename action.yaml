@@ -2,12 +2,8 @@ name: 'Terraform Apply and Summary'
 description: 'Applies Terraform plan and writes a grouped resource summary with IDs and timestamp to GitHub Step Summary.'
 
 inputs:
-  terraform-plan-file:
-    description: 'Name of the uploaded Terraform plan artifact'
-    required: true
-    default: 'terraform-plan'
 
-  release_tag:
+  release-tag:
     description: 'Optional release tag to checkout'
     required: false
     type: string
@@ -26,6 +22,21 @@ inputs:
     description: "AWS region where the S3 bucket is located"
     required: true
 
+  tf-plan-file:
+    description: "File to save the Terraform plan output"
+    required: false
+    default: "tfplan"  
+
+  tf-vars-file:
+    description: "Optional Terraform variable file"
+    required: false
+    default: "terraform.tfvars"
+
+  tf-plan-name:
+    description: "Name of the Terraform plan file"
+    required: false
+    default: "terraform-plan"
+
   ci-pipeline:
     description: "Set to true to use commit SHA in backend key"
     required: false
@@ -38,13 +49,13 @@ runs:
     - name: Checkout repo
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.release_tag || github.ref_name }}       
+        ref: ${{ inputs.release-tag || github.ref_name }}       
 
     - name: Download Terraform plan artifact
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.terraform-plan-file }}
-        path: plan-artifact
+        path: ${{ inputs.tf-plan-name}}
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
@@ -75,9 +86,12 @@ runs:
       id: apply
       working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
       run: |
-        # Copy the plan file from the downloaded artifact
-        cp ../plan-artifact/${{ inputs.terraform-plan-file }} tfplan.out
-
+        pwd
+        echo "=========================="
+        ls -alrt
+        echo "=========================="
+        cat ${{ inputs.tf-plan-file }}.out
+        
         # Check if the plan file exists
         if [ ! -f tfplan.out ]; then
           echo "❌ Plan file not found. Exiting."
