@@ -3,24 +3,38 @@ description: 'Applies Terraform plan and writes a grouped resource summary with 
 
 inputs:
 
-  release-tag:
-    description: 'Optional release tag to checkout'
+  terraform-dir:
+    description: "Relative path to the directory containing Terraform configuration files (e.g., 'tf', 'infrastructure')."
     required: false
     type: string
-    default: ''
-
-  terraform-dir:
-    description: "Path to the Terraform configuration"
-    required: false
     default: "tf"
 
+  release-tag:
+    description: "Git release tag to check out. If omitted, the latest commit on the default branch is used."
+    required: false
+    type: string
+    default: ""
+
+  ci-pipeline:
+    description: "Set to 'true' to include the commit SHA in the Terraform state key (suitable for CI/CD). Use 'false' for static state keys."
+    required: false
+    type: string
+    default: "false"
+
   s3-bucket:
-    description: "S3 bucket for Terraform backend"
+    description: "Name of the S3 bucket used as the backend for storing the Terraform state file."
     required: true
+    type: string
 
   s3-region:
-    description: "AWS region where the S3 bucket is located"
+    description: "AWS region where the S3 backend bucket is located (e.g., us-east-1, eu-west-1)."
     required: true
+    type: string
+
+  tf-plan-name:
+    description: "Name of the Terraform plan file"
+    required: false
+    default: "terraform-plan"
 
   tf-plan-file:
     description: "File to save the Terraform plan output"
@@ -32,24 +46,25 @@ inputs:
     required: false
     default: "terraform.tfvars"
 
-  tf-plan-name:
-    description: "Name of the Terraform plan file"
-    required: false
-    default: "terraform-plan"
-
-  ci-pipeline:
-    description: "Set to true to use commit SHA in backend key"
-    required: false
-    default: "false"
-
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
 
-    - name: Checkout repo
+    - name: Set Checkout Ref
+      id: set-ref
+      shell: bash
+      run: |
+        if [[ -n "${{ inputs.release-tag }}" ]]; then
+          echo "ref=${{ inputs.release-tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "ref=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Checkout Repo
+      id: checkout
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.release-tag || github.ref_name }}       
+        ref: ${{ steps.set-ref.outputs.ref }}
 
     - name: Download Terraform plan artifact
       uses: actions/download-artifact@v4
@@ -60,9 +75,10 @@ runs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Compute Backend Key from Repository Name
-      id: key
+    - name: Generate Terraform State Key
+      id: generate-tfstate-key
       shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
       run: |
         if [[ "${{ inputs.ci-pipeline }}" == "true" ]]; then
           state_key="${{ github.repository }}/${{ github.sha }}/terraform.tfstate"
@@ -71,20 +87,27 @@ runs:
         fi
         echo "s3_key=$state_key" >> $GITHUB_OUTPUT
 
-    - name: Terraform Init with S3 Backend
+    - name: Initialize Terraform with S3 Backend
       shell: bash
       working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
       run: |
         terraform init -input=false \
           -backend-config="bucket=${{ inputs.s3-bucket }}" \
-          -backend-config="key=${{ steps.key.outputs.s3_key }}" \
+          -backend-config="key=${{ steps.generate-tfstate-key.outputs.s3_key }}" \
           -backend-config="region=${{ inputs.s3-region }}" \
           -backend-config="encrypt=true" \
           -backend-config="use_lockfile=true"
 
+    - name: Download Plan Output as Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.tf-plan-name }}
+        path: ${{ github.workspace }}/${{ inputs.terraform-dir }}
+
     - name: Terraform Apply with Summary
       id: apply
       working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
+      shell: bash
       run: |
         pwd
         echo "=========================="
@@ -97,6 +120,13 @@ runs:
           echo "❌ Plan file not found. Exiting."
           exit 1
         fi
+
+        echo "Available Terraform files: "
+        echo "-----------------------------"
+        ls -lR
+
+        echo "---------Terraform Var file--------------------"
+        cat ${{ inputs.tf-vars-file }}
 
         START_TIME=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
         echo "## 🚀 Terraform Apply Output" >> "$GITHUB_STEP_SUMMARY"
@@ -134,4 +164,4 @@ runs:
         echo "" >> "$GITHUB_STEP_SUMMARY"
         END_TIME=$(date -u "+%Y-%m-%d %H:%M:%S UTC")
         echo "_**Completed at: ${END_TIME}**_" >> "$GITHUB_STEP_SUMMARY"
-      shell: bash
+
