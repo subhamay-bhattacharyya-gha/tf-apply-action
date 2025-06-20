@@ -1,3 +1,13 @@
+# [1.1.0](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/compare/v1.0.0...v1.1.0) (2025-06-20)
+
+
+### Features
+
+* Enhance action.yaml inputs for clarity and improve Terraform state key generation ([b69bd75](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/commit/b69bd757bfc6f1c5dabffe8ced14898bd82096b9))
+* Refactor inputs in action.yaml to streamline configuration and remove unnecessary parameters ([399e797](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/commit/399e797335fe1674040e1934d4b4d79dc3f01ffa))
+* Rename input parameter and enhance Terraform Apply step with improved error handling and summary formatting ([900f922](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/commit/900f922f93c0f5d802ac12f7e2dfd02cb8aea9ae))
+* Update input parameters in action.yaml for consistency and improve Terraform plan handling ([59ef1d0](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/commit/59ef1d0f10fb5a8fb1059b0053367a3272b8dcce))
+
 # 1.0.0 (2025-05-26)
 
 
