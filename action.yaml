@@ -109,21 +109,12 @@ runs:
       working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
       shell: bash
       run: |
-        pwd
-        echo "=========================="
-        ls -alrt
-        echo "=========================="
-        cat ${{ inputs.tf-plan-file }}.out
         
         # Check if the plan file exists
         if [ ! -f tfplan.out ]; then
           echo "❌ Plan file not found. Exiting."
           exit 1
         fi
-
-        echo "Available Terraform files: "
-        echo "-----------------------------"
-        ls -lR
 
         echo "---------Terraform Var file--------------------"
         cat ${{ inputs.tf-vars-file }}
