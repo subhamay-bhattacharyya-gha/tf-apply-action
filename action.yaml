@@ -67,7 +67,7 @@ runs:
         ref: ${{ steps.set-ref.outputs.ref }}
 
     - name: Download Terraform plan artifact
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: ${{ inputs.terraform-plan-file }}
         path: ${{ inputs.tf-plan-name}}
@@ -99,7 +99,7 @@ runs:
           -backend-config="use_lockfile=true"
 
     - name: Download Plan Output as Artifact
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: ${{ inputs.tf-plan-name }}
         path: ${{ github.workspace }}/${{ inputs.terraform-dir }}
