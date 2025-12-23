@@ -1,0 +1,113 @@
+name: Multi-Cloud Terraform Example
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_type:
+        description: 'Backend type to use'
+        required: true
+        default: 's3'
+        type: choice
+        options:
+        - s3
+        - remote
+      cloud_provider:
+        description: 'Cloud provider to deploy to (for s3 backend)'
+        required: false
+        default: 'aws'
+        type: choice
+        options:
+        - aws
+        - azure
+        - gcp
+
+jobs:
+  deploy-aws:
+    if: github.event.inputs.backend_type == 's3' && github.event.inputs.cloud_provider == 'aws'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Apply Terraform (AWS)
+        uses: ./
+        with:
+          backend-type: 's3'
+          cloud-provider: 'aws'
+          s3-bucket: ${{ secrets.AWS_S3_BUCKET }}
+          s3-region: 'us-east-1'
+          dynamodb-table: ${{ secrets.AWS_DYNAMODB_TABLE }}
+          terraform-dir: 'examples/aws'
+          ci-pipeline: 'true'
+
+  deploy-azure:
+    if: github.event.inputs.backend_type == 's3' && github.event.inputs.cloud_provider == 'azure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Apply Terraform (Azure)
+        uses: ./
+        with:
+          backend-type: 's3'
+          cloud-provider: 'azure'
+          azure-storage-account: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+          azure-container-name: 'tfstate'
+          azure-resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          terraform-dir: 'examples/azure'
+          ci-pipeline: 'true'
+
+  deploy-gcp:
+    if: github.event.inputs.backend_type == 's3' && github.event.inputs.cloud_provider == 'gcp'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Apply Terraform (GCP)
+        uses: ./
+        with:
+          backend-type: 's3'
+          cloud-provider: 'gcp'
+          gcp-bucket: ${{ secrets.GCP_BUCKET }}
+          gcp-project: ${{ secrets.GCP_PROJECT }}
+          terraform-dir: 'examples/gcp'
+          ci-pipeline: 'true'
+
+  deploy-hcp:
+    if: github.event.inputs.backend_type == 'remote'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply Terraform (HCP Terraform Cloud)
+        uses: ./
+        with:
+          backend-type: 'remote'
+          hcp-organization: ${{ secrets.HCP_ORGANIZATION }}
+          hcp-workspace: ${{ secrets.HCP_WORKSPACE }}
+          hcp-token: ${{ secrets.TF_API_TOKEN }}
+          terraform-dir: 'examples/hcp'
+          ci-pipeline: 'true'
