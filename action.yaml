@@ -1,4 +1,4 @@
-name: 'Multi-Cloud Terraform Apply and Summary'
+name: 'Terraform Apply and Summary'
 description: 'Applies Terraform plan and writes a grouped resource summary with IDs and timestamp to GitHub Step Summary. Supports AWS, Azure, GCP, and HCP Terraform Cloud backends with built-in authentication.'
 
 inputs:
@@ -34,7 +34,7 @@ inputs:
     required: true
     type: string
 
-  # AWS Backend Configuration
+  # AWS S3 Backend Configuration
   s3-bucket:
     description: "Name of the S3 bucket used as the backend for storing the Terraform state file (AWS only)."
     required: false
@@ -95,6 +95,7 @@ inputs:
     required: false
     type: string
 
+  # Terraform artifacts
   tf-plan-name:
     description: "Name of the Terraform plan file"
     required: false
@@ -262,7 +263,7 @@ runs:
         tenant-id: ${{ inputs.azure-tenant-id }}
         subscription-id: ${{ inputs.azure-subscription-id }}
 
-    - name: Configure GCP Authentication
+    - name: Configure GCP Authentication (WIF)
       if: inputs.cloud-provider == 'gcp'
       uses: google-github-actions/auth@v2
       with:
