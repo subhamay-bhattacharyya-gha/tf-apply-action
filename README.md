@@ -11,10 +11,10 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
 
 - 🌐 **Multi-Cloud Support**: Works with AWS, Azure, and GCP using their respective backends
 - ☁️ **HCP Terraform Cloud**: Full support for Terraform Cloud remote backend
-- � **DBuilt-in OIDC Authentication**: Integrated authentication for AWS, Azure, and GCP
-- � ***Detailed Summaries**: Generates comprehensive GitHub Step Summaries with resource changes and outputs
-- � ***Secure State Management**: Supports S3 backend with encryption and locking, plus HCP Terraform Cloud
-- � **CIs/CD Ready**: Configurable state keys for different deployment strategies
+- ☁️ **Built-in OIDC Authentication**: Integrated authentication for AWS, Azure, and GCP
+- ☁️ **Detailed Summaries**: Generates comprehensive GitHub Step Summaries with resource changes and outputs
+- ☁️ **Secure State Management**: Supports S3 backend with encryption and locking, plus HCP Terraform Cloud
+- ☁️ **CIs/CD Ready**: Configurable state keys for different deployment strategies
 - 📋 **Resource Tracking**: Shows affected resources with actions and types
 - 🐛 **Debug Support**: Built-in input debugging for troubleshooting
 
