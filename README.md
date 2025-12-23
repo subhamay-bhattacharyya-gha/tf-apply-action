@@ -26,7 +26,7 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
     backend-type: 's3'
     cloud-provider: 'aws'
     s3-bucket: 'my-terraform-state-bucket'
-    s3-region: 'us-east-1'
+    s3-region: ${{ secrets.AWS_REGION }}
     s3-key-prefix: 'environments/prod'  # optional
     aws-region: ${{ secrets.AWS_REGION }}
     aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -49,7 +49,7 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
     backend-type: 's3'  # Uses S3-compatible backend configuration
     cloud-provider: 'azure'
     s3-bucket: 'my-terraform-state-bucket'  # Your backend bucket
-    s3-region: 'us-east-1'  # Backend region
+    s3-region: ${{ secrets.AWS_REGION }}  # Backend region
     azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
     azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -73,7 +73,7 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
     backend-type: 's3'  # Uses S3-compatible backend configuration
     cloud-provider: 'gcp'
     s3-bucket: 'my-terraform-state-bucket'  # Your backend bucket
-    s3-region: 'us-east-1'  # Backend region
+    s3-region: ${{ secrets.AWS_REGION }}  # Backend region
     gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
     gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
     terraform-dir: 'infrastructure'
@@ -271,7 +271,7 @@ jobs:
           backend-type: 's3'
           cloud-provider: 'aws'
           s3-bucket: 'my-terraform-state-bucket'
-          s3-region: 'us-east-1'
+          s3-region: ${{ secrets.AWS_REGION }}
           s3-key-prefix: 'environments/prod'
           aws-region: ${{ secrets.AWS_REGION }}
           aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
