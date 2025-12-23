@@ -51,7 +51,7 @@ yarn.lock          linguist-generated=true
 venv/**         linguist-vendored
 dist/**         linguist-generated
 build/**        linguist-generated
-site/**         linguist-generated  # docs builds (MkDocs/Jekyll)
+site/**         linguist-generated 
 
 # Frontend/artifact directories (if any)
 public/**       linguist-generated
