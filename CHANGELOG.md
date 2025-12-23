@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/compare/v1.1.0...v1.1.1) (2025-12-23)
+
+
+### Bug Fixes
+
+* update Node.js version in release workflow to 22.14.0 ([042d255](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/commit/042d255d742072363adc411bcf56d6445fc79513))
+
 # [1.1.0](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/compare/v1.0.0...v1.1.0) (2025-06-20)
 
 
