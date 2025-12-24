@@ -4,7 +4,7 @@ description: 'Applies Terraform plan and writes a grouped resource summary with 
 inputs:
 
   terraform-dir:
-    description: "Relative path to the directory containing Terraform configuration files (e.g., 'tf', 'infrastructure')."
+    description: "Relative path to the directory containing Terraform configuration files (e.g., 'infra/aws/tf', 'infra/azure/tf', 'infra/gcp/tf')."
     required: false
     type: string
     default: "tf"

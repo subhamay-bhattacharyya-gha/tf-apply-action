@@ -20,8 +20,6 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
 
 ## Usage
 
-## Usage
-
 ### AWS S3 Backend
 
 ```yaml
@@ -30,20 +28,21 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
   with:
     backend-type: 's3'
     cloud-provider: 'aws'
-    s3-bucket: 'my-terraform-state-bucket'
-    s3-region: ${{ secrets.AWS_REGION }}
+    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}
+    s3-region: ${{ vars.AWS_REGION }}
     s3-key-prefix: 'environments/prod'  # optional
-    aws-region: ${{ secrets.AWS_REGION }}
+    aws-region: ${{ vars.AWS_REGION }}
     aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-    terraform-dir: 'infrastructure'
+    terraform-dir: 'infra/aws/tf'
     ci-pipeline: 'true'
 ```
 
-> **Note:** Configure these AWS secrets in your GitHub repository:
-> - `AWS_REGION`: Your AWS region (e.g., `us-east-1`)
-> - `AWS_ROLE_ARN`: Your IAM role ARN (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
+> **Note:** Configure these values in your GitHub repository:
+> - `AWS_REGION` (Variable): Your AWS region (e.g., `us-east-1`)
+> - `AWS_TF_STATE_BUCKET` (Variable): Your S3 bucket name for Terraform state (e.g., `my-company-terraform-state`)
+> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
 > 
-> Never hardcode IAM role ARNs or regions in your workflow files. Always store sensitive values as GitHub repository secrets for security.
+> Never hardcode IAM role ARNs, bucket names, or regions in your workflow files. Store sensitive values like role ARNs as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
 
 ### Azure with S3-Compatible Backend
 
@@ -53,21 +52,23 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
   with:
     backend-type: 's3'  # Uses S3-compatible backend configuration
     cloud-provider: 'azure'
-    s3-bucket: 'my-terraform-state-bucket'  # Your backend bucket
-    s3-region: ${{ secrets.AWS_REGION }}  # Backend region
+    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}  # Your backend bucket
+    s3-region: ${{ vars.AWS_REGION }}  # Backend region
     azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
     azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    terraform-dir: 'infrastructure'
+    terraform-dir: 'infra/azure/tf'
     ci-pipeline: 'true'
 ```
 
-> **Note:** Configure these Azure secrets in your GitHub repository:
-> - `AZURE_CLIENT_ID`: Your Azure application (client) ID
-> - `AZURE_TENANT_ID`: Your Azure tenant ID
-> - `AZURE_SUBSCRIPTION_ID`: Your Azure subscription ID
+> **Note:** Configure these values in your GitHub repository:
+> - `AWS_REGION` (Variable): Your backend region (e.g., `us-east-1`)
+> - `AWS_TF_STATE_BUCKET` (Variable): Your S3-compatible backend bucket name (e.g., `my-company-terraform-state`)
+> - `AZURE_CLIENT_ID` (Secret): Your Azure application (client) ID
+> - `AZURE_TENANT_ID` (Secret): Your Azure tenant ID
+> - `AZURE_SUBSCRIPTION_ID` (Secret): Your Azure subscription ID
 > 
-> These values are required for OIDC authentication with Azure and should never be hardcoded in workflow files.
+> Never hardcode Azure credentials, bucket names, or regions in your workflow files. Store sensitive values like Azure IDs as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
 
 ### GCP with S3-Compatible Backend
 
@@ -77,19 +78,21 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
   with:
     backend-type: 's3'  # Uses S3-compatible backend configuration
     cloud-provider: 'gcp'
-    s3-bucket: 'my-terraform-state-bucket'  # Your backend bucket
-    s3-region: ${{ secrets.AWS_REGION }}  # Backend region
+    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}  # Your backend bucket
+    s3-region: ${{ vars.AWS_REGION }}  # Backend region
     gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
     gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-    terraform-dir: 'infrastructure'
+    terraform-dir: 'infra/gcp/tf'
     ci-pipeline: 'true'
 ```
 
-> **Note:** Configure these GCP secrets in your GitHub repository:
-> - `GCP_WIF_PROVIDER`: Your Workload Identity Federation provider (e.g., `projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider`)
-> - `GCP_SERVICE_ACCOUNT`: Your service account email (e.g., `my-service-account@my-project.iam.gserviceaccount.com`)
+> **Note:** Configure these values in your GitHub repository:
+> - `AWS_REGION` (Variable): Your backend region (e.g., `us-east-1`)
+> - `AWS_TF_STATE_BUCKET` (Variable): Your S3-compatible backend bucket name (e.g., `my-company-terraform-state`)
+> - `GCP_WIF_PROVIDER` (Secret): Your Workload Identity Federation provider (e.g., `projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider`)
+> - `GCP_SERVICE_ACCOUNT` (Secret): Your service account email (e.g., `my-service-account@my-project.iam.gserviceaccount.com`)
 > 
-> These values are required for OIDC authentication with Google Cloud and should be stored securely as repository secrets.
+> Never hardcode GCP credentials, bucket names, or regions in your workflow files. Store sensitive values like Workload Identity Federation providers and service accounts as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
 
 ### HCP Terraform Cloud Backend
 
@@ -100,20 +103,19 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
     backend-type: 'remote'
     cloud-provider: 'aws'  # or 'azure', 'gcp' for resource authentication
     tfc-token: ${{ secrets.TF_API_TOKEN }}
-    aws-region: ${{ secrets.AWS_REGION }}  # Required for cloud provider authentication
+    aws-region: ${{ vars.AWS_REGION }}  # Required for cloud provider authentication
     aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-    terraform-dir: 'infrastructure'
+    terraform-dir: 'infra/aws/tf'
     ci-pipeline: 'true'
 ```
 
-> **Note:** Configure these secrets for HCP Terraform Cloud with AWS authentication:
-> - `TF_API_TOKEN`: Your HCP Terraform Cloud API token
-> - `AWS_REGION`: AWS region for resource authentication
-> - `AWS_ROLE_ARN`: IAM role ARN for OIDC authentication
+> **Note:** Configure these values in your GitHub repository:
+> - `AWS_REGION` (Variable): Your AWS region for resource authentication (e.g., `us-east-1`)
+> - `TF_API_TOKEN` (Secret): Your HCP Terraform Cloud API token
+> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN for OIDC authentication (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
 > 
-> When using different cloud providers with HCP Terraform Cloud, replace the AWS authentication inputs with the appropriate Azure or GCP secrets as shown in the examples above.
+> Never hardcode API tokens, IAM role ARNs, or regions in your workflow files. Store sensitive values like API tokens and role ARNs as GitHub repository secrets and non-sensitive values like regions as repository variables for security. When using different cloud providers with HCP Terraform Cloud, replace the AWS authentication inputs with the appropriate Azure or GCP secrets as shown in the examples above.
 
-## Inputs
 
 ## Inputs
 
@@ -275,18 +277,21 @@ jobs:
         with:
           backend-type: 's3'
           cloud-provider: 'aws'
-          s3-bucket: 'my-terraform-state-bucket'
-          s3-region: ${{ secrets.AWS_REGION }}
+          s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}
+          s3-region: ${{ vars.AWS_REGION }}
           s3-key-prefix: 'environments/prod'
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
           aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          terraform-dir: 'infrastructure'
+          terraform-dir: 'infra/aws/tf'
           ci-pipeline: 'true'
 ```
 
-> **Note:** Configure the following secrets in your GitHub repository:
-> - `AWS_REGION`: Your AWS region (e.g., `us-east-1`)
-> - `AWS_ROLE_ARN`: Your IAM role ARN (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
+> **Note:** Configure these values in your GitHub repository:
+> - `AWS_REGION` (Variable): Your AWS region (e.g., `us-east-1`)
+> - `AWS_TF_STATE_BUCKET` (Variable): Your S3 bucket name for Terraform state (e.g., `my-company-terraform-state`)
+> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
+> 
+> Never hardcode IAM role ARNs, bucket names, or regions in your workflow files. Store sensitive values like role ARNs as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
 
 ### Multi-Cloud with HCP Terraform Cloud
 
@@ -321,7 +326,7 @@ jobs:
           cloud-provider: ${{ github.event.inputs.cloud_provider }}
           tfc-token: ${{ secrets.TF_API_TOKEN }}
           # AWS authentication (if aws selected)
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
           aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           # Azure authentication (if azure selected)
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -330,16 +335,19 @@ jobs:
           # GCP authentication (if gcp selected)
           gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
           gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          terraform-dir: 'infrastructure'
+          terraform-dir: 'infra/gcp/tf'
 ```
 
 > **Note:** Configure these secrets in your GitHub repository settings:
-> - **AWS**: `AWS_REGION`, `AWS_ROLE_ARN`
+> - **AWS**: `AWS_ROLE_ARN`
 > - **Azure**: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 > - **GCP**: `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`
 > - **HCP Terraform Cloud**: `TF_API_TOKEN`
 > 
-> Never commit sensitive values directly in your workflow files. Always use GitHub repository secrets for authentication credentials and resource identifiers.
+> Also configure these GitHub repository variables:
+> - **AWS**: `AWS_TF_STATE_BUCKET`, `AWS_REGION`
+> 
+> Never commit sensitive values directly in your workflow files. Use GitHub repository secrets for authentication credentials and variables for non-sensitive configuration values.
 
 ## Action Workflow
 
