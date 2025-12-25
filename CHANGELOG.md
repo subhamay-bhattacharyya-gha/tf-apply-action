@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/compare/v1.1.1...v1.2.0) (2025-12-25)
+
+
+### Features
+
+* add multi-cloud Terraform deployment examples and documentation ([57cc0f5](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/commit/57cc0f511f7aa6c3e9a25564ef6ad9cda1e88086))
+
 ## [1.1.1](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/compare/v1.1.0...v1.1.1) (2025-12-23)
 
 
