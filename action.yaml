@@ -3,18 +3,21 @@ description: 'Applies Terraform plan and writes a grouped resource summary with 
 
 inputs:
 
+  # Cloud Provider Selection
+  cloud-provider:
+    description: "Cloud provider for backend storage. Options: 'aws', 'azure', 'gcp', 'snowflake', 'databricks'"
+    required: true
+    type: string
   terraform-dir:
     description: "Relative path to the directory containing Terraform configuration files (e.g., 'infra/aws/tf', 'infra/azure/tf', 'infra/gcp/tf')."
     required: false
     type: string
     default: "tf"
-
   release-tag:
     description: "Git release tag to check out. If omitted, the latest commit on the default branch is used."
     required: false
     type: string
     default: ""
-
   ci-pipeline:
     description: "Set to 'true' to include the commit SHA in the Terraform state key (suitable for CI/CD). Use 'false' for static state keys."
     required: false
@@ -27,12 +30,6 @@ inputs:
     required: false
     type: string
     default: "s3"
-
-  # Cloud Provider Selection
-  cloud-provider:
-    description: "Cloud provider for backend storage. Options: 'aws', 'azure', 'gcp'"
-    required: true
-    type: string
 
   # AWS S3 Backend Configuration
   s3-bucket:
@@ -95,6 +92,38 @@ inputs:
     required: false
     type: string
 
+  # Snowflake Authentication Inputs
+  snowflake-account:
+    description: "Snowflake account identifier. Required when cloud-provider is 'snowflake'."
+    required: false
+    type: string
+
+  snowflake-user:
+    description: "Snowflake user name. Required when cloud-provider is 'snowflake'."
+    required: false
+    type: string
+
+  snowflake-role:
+    description: "Snowflake role name. Required when cloud-provider is 'snowflake'."
+    required: false
+    type: string
+
+  snowflake-private-key:
+    description: "Snowflake private key for authentication. Required when cloud-provider is 'snowflake'."
+    required: false
+    type: string
+
+  # Databricks Authentication Inputs
+  databricks-host:
+    description: "Databricks workspace URL. Required when cloud-provider is 'databricks'."
+    required: false
+    type: string
+
+  databricks-token:
+    description: "Databricks personal access token. Required when cloud-provider is 'databricks'."
+    required: false
+    type: string
+
   # Terraform artifacts
   tf-plan-name:
     description: "Name of the Terraform plan file"
@@ -123,7 +152,7 @@ runs:
     # Checkout Repo - Get the code
     # Setup Terraform - Install Terraform
     # Download Terraform plan artifact - Get the plan file
-    # Configure Cloud Authentication - OIDC authentication (AWS/Azure/GCP)
+    # Configure Cloud Authentication - OIDC authentication (AWS/Azure/GCP/Snowflake/Databricks)
     # Setup TFC Credentials - HCP Terraform Cloud credentials (if remote)
     # Initialize Remote Backend - HCP Terraform Cloud init (if remote)
     # Generate State Key - Create S3 state key (if S3)
@@ -166,11 +195,21 @@ runs:
         echo "azure-client-id: ${{ inputs.azure-client-id }}"
         echo "azure-tenant-id: ${{ inputs.azure-tenant-id }}"
         echo "azure-subscription-id: ${{ inputs.azure-subscription-id }}"
+        echo ""
+        echo "=== Snowflake Authentication Inputs ==="
+        echo "snowflake-account: ${{ inputs.snowflake-account }}"
+        echo "snowflake-user: ${{ inputs.snowflake-user }}"
+        echo "snowflake-role: ${{ inputs.snowflake-role }}"
+        echo "snowflake-private-key: [REDACTED - $(if [[ -n '${{ inputs.snowflake-private-key }}' ]]; then echo 'PROVIDED'; else echo 'NOT PROVIDED'; fi)]"
+        echo ""
+        echo "=== Databricks Authentication Inputs ==="
+        echo "databricks-host: ${{ inputs.databricks-host }}"
+        echo "databricks-token: [REDACTED - $(if [[ -n '${{ inputs.databricks-token }}' ]]; then echo 'PROVIDED'; else echo 'NOT PROVIDED'; fi)]"
         echo "================================="
 
     # Validate input configuration
     #############################################
-    - name: Validate Configuration
+    - name: Validate Input Configuration
       id: validate-config
       shell: bash
       run: |
@@ -211,8 +250,20 @@ runs:
               exit 1
             fi
             ;;
+          "snowflake")
+            if [[ -z "${{ inputs.snowflake-account }}" || -z "${{ inputs.snowflake-user }}" || -z "${{ inputs.snowflake-role }}" || -z "${{ inputs.snowflake-private-key }}" ]]; then
+              echo "Error: snowflake-account, snowflake-user, snowflake-role, and snowflake-private-key are required when cloud-provider is 'snowflake'"
+              exit 1
+            fi
+            ;;
+          "databricks")
+            if [[ -z "${{ inputs.databricks-host }}" || -z "${{ inputs.databricks-token }}" ]]; then
+              echo "Error: databricks-host and databricks-token are required when cloud-provider is 'databricks'"
+              exit 1
+            fi
+            ;;
           *)
-            echo "Error: cloud-provider must be 'aws', 'gcp', or 'azure'"
+            echo "Error: cloud-provider must be 'aws', 'gcp', 'azure', 'snowflake', or 'databricks'"
             exit 1
             ;;
         esac
@@ -367,9 +418,8 @@ runs:
         else
           case "${{ inputs.cloud-provider }}" in
             "aws")
-              echo "- **Provider**: Amazon Web Services (S3)" >> "$GITHUB_STEP_SUMMARY"
-              echo "- **Bucket**: ${{ inputs.s3-bucket }}" >> "$GITHUB_STEP_SUMMARY"
-              echo "- **Region**: ${{ inputs.s3-region }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Provider**: Amazon Web Services" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Region**: ${{ inputs.aws-region }}" >> "$GITHUB_STEP_SUMMARY"
               echo "- **Authentication**: IAM Role (${{ inputs.aws-role-to-assume }})" >> "$GITHUB_STEP_SUMMARY"
               ;;
             "azure")
@@ -381,6 +431,18 @@ runs:
               echo "- **Provider**: Google Cloud Platform (Cloud Storage)" >> "$GITHUB_STEP_SUMMARY"
               echo "- **Authentication**: Workload Identity Federation" >> "$GITHUB_STEP_SUMMARY"
               echo "- **Service Account**: ${{ inputs.gcp-service-account }}" >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            "snowflake")
+              echo "- **Provider**: Snowflake" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Account**: ${{ inputs.snowflake-account }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **User**: ${{ inputs.snowflake-user }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Role**: ${{ inputs.snowflake-role }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Authentication**: Private Key" >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            "databricks")
+              echo "- **Provider**: Databricks" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Host**: ${{ inputs.databricks-host }}" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Authentication**: Personal Access Token" >> "$GITHUB_STEP_SUMMARY"
               ;;
           esac
         fi
