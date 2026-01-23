@@ -2,19 +2,18 @@
 
 ![Release](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/actions/workflows/release.yaml/badge.svg)&nbsp;![Commit Activity](https://img.shields.io/github/commit-activity/t/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Last Commit](https://img.shields.io/github/last-commit/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Release Date](https://img.shields.io/github/release-date/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Repo Size](https://img.shields.io/github/repo-size/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![File Count](https://img.shields.io/github/directory-file-count/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Issues](https://img.shields.io/github/issues/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Top Language](https://img.shields.io/github/languages/top/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Custom Endpoint](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/bsubhamay/f3ca17641b5662785958cc59042f0877/raw/tf-apply-action.json?)
 
-A comprehensive GitHub composite action for running `terraform plan` with support for multiple backends (S3, HCP Terraform Cloud), GCP Workload Identity Federation, and automated artifact management.
-
-
-A GitHub Action that applies Terraform plans and generates detailed summaries with support for AWS S3 and HCP Terraform Cloud backends with built-in OIDC authentication.
+A comprehensive GitHub composite action for running `terraform apply` with support for multiple backends (S3, HCP Terraform Cloud), multi-cloud authentication (AWS, Azure, GCP, Snowflake, Databricks), and automated artifact management.
 
 ## Features
 
-- 🌐 **Multi-Cloud Support**: Works with AWS, Azure, and GCP using their respective backends
+- 🌐 **Multi-Cloud Support**: Works with AWS, Azure, GCP, Snowflake, and Databricks
 - ☁️ **HCP Terraform Cloud**: Full support for Terraform Cloud remote backend
-- ☁️ **Built-in OIDC Authentication**: Integrated authentication for AWS, Azure, and GCP
-- ☁️ **Detailed Summaries**: Generates comprehensive GitHub Step Summaries with resource changes and outputs
-- ☁️ **Secure State Management**: Supports S3 backend with encryption and locking, plus HCP Terraform Cloud
-- ☁️ **CIs/CD Ready**: Configurable state keys for different deployment strategies
+- 🔐 **Built-in OIDC Authentication**: Integrated authentication for AWS, Azure, and GCP
+- 🔑 **Snowflake Authentication**: Private key-based authentication for Snowflake
+- 🔓 **Databricks Authentication**: Personal access token authentication for Databricks
+- 📊 **Detailed Summaries**: Generates comprehensive GitHub Step Summaries with resource changes and outputs
+- 🔒 **Secure State Management**: Supports S3 backend with encryption and locking, plus HCP Terraform Cloud
+- 🚀 **CI/CD Ready**: Configurable state keys for different deployment strategies
 - 📋 **Resource Tracking**: Shows affected resources with actions and types
 - 🐛 **Debug Support**: Built-in input debugging for troubleshooting
 
@@ -116,6 +115,57 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
 > 
 > Never hardcode API tokens, IAM role ARNs, or regions in your workflow files. Store sensitive values like API tokens and role ARNs as GitHub repository secrets and non-sensitive values like regions as repository variables for security. When using different cloud providers with HCP Terraform Cloud, replace the AWS authentication inputs with the appropriate Azure or GCP secrets as shown in the examples above.
 
+### Snowflake Backend
+
+```yaml
+- name: Apply Terraform (Snowflake)
+  uses: subhamay-bhattacharyya-gha/tf-apply-action@main
+  with:
+    backend-type: 's3'  # Uses S3-compatible backend configuration
+    cloud-provider: 'snowflake'
+    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}  # Your backend bucket
+    s3-region: ${{ vars.AWS_REGION }}  # Backend region
+    snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+    snowflake-user: ${{ secrets.SNOWFLAKE_USER }}
+    snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
+    snowflake-private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+    terraform-dir: 'infra/snowflake/tf'
+    ci-pipeline: 'true'
+```
+
+> **Note:** Configure these values in your GitHub repository:
+> - `AWS_REGION` (Variable): Your backend region (e.g., `us-east-1`)
+> - `AWS_TF_STATE_BUCKET` (Variable): Your S3-compatible backend bucket name (e.g., `my-company-terraform-state`)
+> - `SNOWFLAKE_ACCOUNT` (Secret): Your Snowflake account identifier (e.g., `xy12345.us-east-1`)
+> - `SNOWFLAKE_USER` (Secret): Your Snowflake user name
+> - `SNOWFLAKE_ROLE` (Secret): Your Snowflake role name
+> - `SNOWFLAKE_PRIVATE_KEY` (Secret): Your Snowflake private key for authentication
+> 
+> Never hardcode Snowflake credentials, bucket names, or regions in your workflow files. Store sensitive values like Snowflake credentials as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
+
+### Databricks Backend
+
+```yaml
+- name: Apply Terraform (Databricks)
+  uses: subhamay-bhattacharyya-gha/tf-apply-action@main
+  with:
+    backend-type: 's3'  # Uses S3-compatible backend configuration
+    cloud-provider: 'databricks'
+    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}  # Your backend bucket
+    s3-region: ${{ vars.AWS_REGION }}  # Backend region
+    databricks-host: ${{ secrets.DATABRICKS_HOST }}
+    databricks-token: ${{ secrets.DATABRICKS_TOKEN }}
+    terraform-dir: 'infra/databricks/tf'
+    ci-pipeline: 'true'
+```
+
+> **Note:** Configure these values in your GitHub repository:
+> - `AWS_REGION` (Variable): Your backend region (e.g., `us-east-1`)
+> - `AWS_TF_STATE_BUCKET` (Variable): Your S3-compatible backend bucket name (e.g., `my-company-terraform-state`)
+> - `DATABRICKS_HOST` (Secret): Your Databricks workspace URL (e.g., `https://dbc-12345678-9abc.cloud.databricks.com`)
+> - `DATABRICKS_TOKEN` (Secret): Your Databricks personal access token
+> 
+> Never hardcode Databricks credentials, bucket names, or regions in your workflow files. Store sensitive values like Databricks tokens as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
 
 ## Inputs
 
@@ -124,7 +174,7 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `backend-type` | Backend type (`s3` for S3-compatible backends, `remote` for HCP Terraform Cloud) | ❌ | `s3` |
-| `cloud-provider` | Cloud provider for authentication (`aws`, `azure`, `gcp`) | ✅ | - |
+| `cloud-provider` | Cloud provider for authentication (`aws`, `azure`, `gcp`, `snowflake`, `databricks`) | ✅ | - |
 | `terraform-dir` | Relative path to Terraform configuration directory | ❌ | `tf` |
 | `release-tag` | Git release tag to check out | ❌ | `""` |
 | `ci-pipeline` | Include commit SHA in state key for CI/CD | ❌ | `false` |
@@ -168,6 +218,22 @@ A GitHub Action that applies Terraform plans and generates detailed summaries wi
 | `gcp-wif-provider` | GCP Workload Identity Federation provider | ✅ (for GCP) | - |
 | `gcp-service-account` | GCP service account email for authentication | ✅ (for GCP) | - |
 
+### Snowflake Authentication Inputs (for cloud-provider: 'snowflake')
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `snowflake-account` | Snowflake account identifier | ✅ (for Snowflake) | - |
+| `snowflake-user` | Snowflake user name | ✅ (for Snowflake) | - |
+| `snowflake-role` | Snowflake role name | ✅ (for Snowflake) | - |
+| `snowflake-private-key` | Snowflake private key for authentication | ✅ (for Snowflake) | - |
+
+### Databricks Authentication Inputs (for cloud-provider: 'databricks')
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `databricks-host` | Databricks workspace URL | ✅ (for Databricks) | - |
+| `databricks-token` | Databricks personal access token | ✅ (for Databricks) | - |
+
 ## Prerequisites
 
 ### OIDC Authentication Setup
@@ -210,6 +276,27 @@ This action uses OpenID Connect (OIDC) for secure authentication with cloud prov
 2. Configure the provider to trust GitHub's OIDC
 3. Create a service account and bind it to the workload identity
 4. Add the provider and service account details to repository secrets
+
+#### Snowflake Authentication Setup
+1. Generate an RSA key pair for authentication
+2. Assign the public key to your Snowflake user
+3. Store the private key securely in GitHub repository secrets
+4. Configure the Snowflake account, user, and role in repository secrets
+
+```bash
+# Generate RSA key pair
+openssl genrsa -out snowflake_key.pem 2048
+openssl rsa -in snowflake_key.pem -pubout -out snowflake_key.pub
+
+# Assign public key to Snowflake user (run in Snowflake)
+ALTER USER your_username SET RSA_PUBLIC_KEY='<public_key_content>';
+```
+
+#### Databricks Authentication Setup
+1. Create a personal access token in your Databricks workspace
+2. Navigate to User Settings > Access Tokens
+3. Generate a new token with appropriate permissions
+4. Store the token and workspace URL in GitHub repository secrets
 
 ### Backend Configuration
 
@@ -310,6 +397,8 @@ on:
         - aws
         - azure
         - gcp
+        - snowflake
+        - databricks
 
 permissions:
   id-token: write   # Required for OIDC
@@ -335,13 +424,22 @@ jobs:
           # GCP authentication (if gcp selected)
           gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
           gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          # Snowflake authentication (if snowflake selected)
+          snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          snowflake-user: ${{ secrets.SNOWFLAKE_USER }}
+          snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
+          snowflake-private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+          # Databricks authentication (if databricks selected)
+          databricks-host: ${{ secrets.DATABRICKS_HOST }}
+          databricks-token: ${{ secrets.DATABRICKS_TOKEN }}
           terraform-dir: 'infra/gcp/tf'
 ```
 
 > **Note:** Configure these secrets in your GitHub repository settings:
 > - **AWS**: `AWS_ROLE_ARN`
-> - **Azure**: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 > - **GCP**: `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`
+> - **Snowflake**: `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_PRIVATE_KEY`
+> - **Databricks**: `DATABRICKS_HOST`, `DATABRICKS_TOKEN`
 > - **HCP Terraform Cloud**: `TF_API_TOKEN`
 > 
 > Also configure these GitHub repository variables:
@@ -359,7 +457,7 @@ The action follows this optimized sequence:
 4. **📥 Checkout Repo** - Checks out the repository code
 5. **🔧 Setup Terraform** - Installs and configures Terraform
 6. **📦 Download Terraform Plan Artifact** - Downloads the plan file from previous workflow
-7. **🔐 Configure Cloud Authentication** - Sets up OIDC authentication for the selected cloud provider
+7. **🔐 Configure Cloud Authentication** - Sets up authentication for the selected cloud provider (OIDC for AWS/Azure/GCP, Private Key for Snowflake, Token for Databricks)
 8. **☁️ Setup TFC Credentials** - Configures HCP Terraform Cloud credentials (if using remote backend)
 9. **🚀 Initialize Remote Backend** - Initializes HCP Terraform Cloud backend (if using remote backend)
 10. **🔑 Generate State Key** - Creates S3 state key with optional prefix (if using S3 backend)
