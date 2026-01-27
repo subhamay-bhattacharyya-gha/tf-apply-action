@@ -2,11 +2,12 @@
 
 ![Release](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/actions/workflows/release.yaml/badge.svg)&nbsp;![Commit Activity](https://img.shields.io/github/commit-activity/t/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Last Commit](https://img.shields.io/github/last-commit/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Release Date](https://img.shields.io/github/release-date/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Repo Size](https://img.shields.io/github/repo-size/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![File Count](https://img.shields.io/github/directory-file-count/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Issues](https://img.shields.io/github/issues/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Top Language](https://img.shields.io/github/languages/top/subhamay-bhattacharyya-gha/tf-apply-action)&nbsp;![Custom Endpoint](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/bsubhamay/f3ca17641b5662785958cc59042f0877/raw/tf-apply-action.json?)
 
-A comprehensive GitHub composite action for running `terraform apply` with support for multiple backends (S3, HCP Terraform Cloud), multi-cloud authentication (AWS, Azure, GCP, Snowflake, Databricks), and automated artifact management.
+A comprehensive GitHub composite action for running `terraform apply` with support for multiple backends (S3, HCP Terraform Cloud), multi-cloud authentication (AWS, Azure, GCP, Snowflake, Databricks), platform mode for multi-provider deployments, and automated artifact management.
 
 ## Features
 
 - 🌐 **Multi-Cloud Support**: Works with AWS, Azure, GCP, Snowflake, and Databricks
+- 🏗️ **Platform Mode**: Auto-detect and deploy to multiple cloud providers based on directory structure
 - ☁️ **HCP Terraform Cloud**: Full support for Terraform Cloud remote backend
 - 🔐 **Built-in OIDC Authentication**: Integrated authentication for AWS, Azure, and GCP
 - 🔑 **Snowflake Authentication**: Private key-based authentication for Snowflake
@@ -167,6 +168,49 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 > 
 > Never hardcode Databricks credentials, bucket names, or regions in your workflow files. Store sensitive values like Databricks tokens as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
 
+### Platform Mode (Multi-Provider Deployment)
+
+Platform mode automatically detects cloud provider directories under `infra/` and validates/authenticates only for the detected providers. This is ideal for repositories that deploy to multiple cloud providers.
+
+```yaml
+- name: Apply Terraform (Platform Mode)
+  uses: subhamay-bhattacharyya-gha/tf-apply-action@main
+  with:
+    backend-type: 's3'
+    cloud-provider: 'platform'
+    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}
+    s3-region: ${{ vars.AWS_REGION }}
+    # AWS authentication (if infra/aws exists)
+    aws-region: ${{ vars.AWS_REGION }}
+    aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+    # GCP authentication (if infra/gcp exists)
+    gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
+    gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+    # Azure authentication (if infra/azure exists)
+    azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+    azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+    azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    # Snowflake authentication (if infra/snowflake exists)
+    snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+    snowflake-user: ${{ secrets.SNOWFLAKE_USER }}
+    snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
+    snowflake-private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+    # Databricks authentication (if infra/databricks exists)
+    databricks-host: ${{ secrets.DATABRICKS_HOST }}
+    databricks-token: ${{ secrets.DATABRICKS_TOKEN }}
+    terraform-dir: 'infra'
+    ci-pipeline: 'true'
+```
+
+> **Note:** Platform mode automatically detects which cloud providers are configured based on directory structure:
+> - `infra/aws/` → Validates and uses AWS authentication
+> - `infra/gcp/` → Validates and uses GCP authentication
+> - `infra/azure/` → Validates and uses Azure authentication
+> - `infra/snowflake/` → Validates and uses Snowflake authentication
+> - `infra/databricks/` → Validates and uses Databricks authentication
+> 
+> Only provide authentication inputs for the cloud providers you have directories for. The action will validate that required inputs are provided for each detected provider directory.
+
 ## Inputs
 
 ### Common Inputs
@@ -174,7 +218,7 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `backend-type` | Backend type (`s3` for S3-compatible backends, `remote` for HCP Terraform Cloud) | ❌ | `s3` |
-| `cloud-provider` | Cloud provider for authentication (`aws`, `azure`, `gcp`, `snowflake`, `databricks`) | ✅ | - |
+| `cloud-provider` | Target cloud provider or platform (`aws`, `azure`, `gcp`, `snowflake`, `databricks`, `platform`) | ✅ | - |
 | `terraform-dir` | Relative path to Terraform configuration directory | ❌ | `tf` |
 | `release-tag` | Git release tag to check out | ❌ | `""` |
 | `ci-pipeline` | Include commit SHA in state key for CI/CD | ❌ | `false` |
@@ -298,6 +342,38 @@ ALTER USER your_username SET RSA_PUBLIC_KEY='<public_key_content>';
 3. Generate a new token with appropriate permissions
 4. Store the token and workspace URL in GitHub repository secrets
 
+### Platform Mode
+
+Platform mode (`cloud-provider: 'platform'`) enables automatic detection and deployment to multiple cloud providers based on your repository's directory structure.
+
+#### Directory Structure
+```
+your-repo/
+├── infra/
+│   ├── aws/           # AWS Terraform configurations
+│   │   └── tf/
+│   ├── gcp/           # GCP Terraform configurations
+│   │   └── tf/
+│   ├── azure/         # Azure Terraform configurations
+│   │   └── tf/
+│   ├── snowflake/     # Snowflake Terraform configurations
+│   │   └── tf/
+│   └── databricks/    # Databricks Terraform configurations
+│       └── tf/
+```
+
+#### How It Works
+1. The action scans for directories under `infra/`
+2. For each detected provider directory, it validates the required authentication inputs
+3. Only providers with existing directories require authentication configuration
+4. The GitHub Step Summary shows all detected platforms and their configurations
+
+#### Benefits
+- **Simplified Configuration**: One workflow for multiple cloud providers
+- **Automatic Detection**: No need to manually specify which providers to deploy
+- **Flexible**: Add or remove provider directories without changing the workflow
+- **Validation**: Ensures all required inputs are provided for detected providers
+
 ### Backend Configuration
 
 #### AWS S3 Backend
@@ -399,6 +475,7 @@ on:
         - gcp
         - snowflake
         - databricks
+        - platform
 
 permissions:
   id-token: write   # Required for OIDC
@@ -457,12 +534,14 @@ The action follows this optimized sequence:
 4. **📥 Checkout Repo** - Checks out the repository code
 5. **🔧 Setup Terraform** - Installs and configures Terraform
 6. **📦 Download Terraform Plan Artifact** - Downloads the plan file from previous workflow
-7. **🔐 Configure Cloud Authentication** - Sets up authentication for the selected cloud provider (OIDC for AWS/Azure/GCP, Private Key for Snowflake, Token for Databricks)
-8. **☁️ Setup TFC Credentials** - Configures HCP Terraform Cloud credentials (if using remote backend)
-9. **🚀 Initialize Remote Backend** - Initializes HCP Terraform Cloud backend (if using remote backend)
-10. **🔑 Generate State Key** - Creates S3 state key with optional prefix (if using S3 backend)
-11. **📡 Initialize S3 Backend** - Initializes S3 backend with full configuration (if using S3 backend)
-12. **⚡ Terraform Apply with Summary** - Applies the plan and generates detailed summary
+7. **🔐 Configure Cloud Authentication** - Sets up OIDC authentication for AWS/Azure/GCP (runs for single provider or platform mode when inputs provided)
+8. **❄️ Configure Snowflake Authentication** - Sets up environment variables for Snowflake provider (runs for snowflake or platform mode when inputs provided)
+9. **🧱 Configure Databricks Authentication** - Sets up environment variables for Databricks provider (runs for databricks or platform mode when inputs provided)
+10. **☁️ Setup TFC Credentials** - Configures HCP Terraform Cloud credentials (if using remote backend)
+11. **🚀 Initialize Remote Backend** - Initializes HCP Terraform Cloud backend (if using remote backend)
+12. **🔑 Generate State Key** - Creates S3 state key with optional prefix (if using S3 backend)
+13. **📡 Initialize S3 Backend** - Initializes S3 backend with full configuration (if using S3 backend)
+14. **⚡ Terraform Apply with Summary** - Applies the plan and generates detailed summary
 
 ## Output
 
@@ -470,6 +549,7 @@ The action generates a comprehensive GitHub Step Summary that includes:
 
 - 🔧 **Backend Configuration**: Shows backend type and configuration details
 - 🔐 **Authentication Details**: Displays authentication method and key identifiers
+- 🏗️ **Platform Detection**: In platform mode, shows all detected cloud providers and their configurations
 - 📌 **Affected Resources**: Table of resources being created, updated, or destroyed
 - 📤 **Terraform Outputs**: All output values from your Terraform configuration
 - ⏱️ **Timing Information**: Start and completion timestamps
