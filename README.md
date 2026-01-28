@@ -10,8 +10,8 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 - 🏗️ **Platform Mode**: Auto-detect and deploy to multiple cloud providers based on directory structure
 - ☁️ **HCP Terraform Cloud**: Full support for Terraform Cloud remote backend
 - 🔐 **Built-in OIDC Authentication**: Integrated authentication for AWS, Azure, and GCP
-- 🔑 **Snowflake Authentication**: Private key-based authentication for Snowflake
-- 🔓 **Databricks Authentication**: Personal access token authentication for Databricks
+- ❄️ **Snowflake Support**: Works with Snowflake (authentication via workflow environment variables)
+- 🧱 **Databricks Support**: Works with Databricks (authentication via workflow environment variables)
 - 📊 **Detailed Summaries**: Generates comprehensive GitHub Step Summaries with resource changes and outputs
 - 🔒 **Secure State Management**: Supports S3 backend with encryption and locking, plus HCP Terraform Cloud
 - 🚀 **CI/CD Ready**: Configurable state keys for different deployment strategies
@@ -124,20 +124,23 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 
 ### Snowflake with S3 Backend
 
+Snowflake authentication must be configured in the calling workflow via environment variables before invoking this action.
+
 ```yaml
 - name: Apply Terraform (Snowflake)
   uses: subhamay-bhattacharyya-gha/tf-apply-action@main
+  env:
+    SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+    SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+    SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+    SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
   with:
-    backend-type: 's3'  # Uses S3 backend - AWS auth is auto-configured
+    backend-type: 's3'
     cloud-provider: 'snowflake'
-    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}  # Your backend bucket
-    s3-region: ${{ vars.AWS_REGION }}  # Backend region
-    aws-region: ${{ vars.AWS_REGION }}  # Required for S3 backend access
-    aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Required for S3 backend access
-    snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-    snowflake-user: ${{ secrets.SNOWFLAKE_USER }}
-    snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
-    snowflake-private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}
+    s3-region: ${{ vars.AWS_REGION }}
+    aws-region: ${{ vars.AWS_REGION }}
+    aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
     terraform-dir: 'infra/snowflake/tf'
     ci-pipeline: 'true'
 ```
@@ -145,28 +148,31 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 > **Note:** Configure these values in your GitHub repository:
 > - `AWS_REGION` (Variable): Your backend region (e.g., `us-east-1`)
 > - `AWS_TF_STATE_BUCKET` (Variable): Your S3 backend bucket name (e.g., `my-company-terraform-state`)
-> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN for S3 backend access (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
+> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN for S3 backend access
 > - `SNOWFLAKE_ACCOUNT` (Secret): Your Snowflake account identifier (e.g., `xy12345.us-east-1`)
 > - `SNOWFLAKE_USER` (Secret): Your Snowflake user name
 > - `SNOWFLAKE_ROLE` (Secret): Your Snowflake role name
 > - `SNOWFLAKE_PRIVATE_KEY` (Secret): Your Snowflake private key for authentication
 > 
-> When using S3 backend with Snowflake, AWS authentication is automatically configured to access the S3 bucket. Never hardcode credentials, bucket names, or regions in your workflow files.
+> Snowflake authentication is handled via environment variables set in the calling workflow, not as action inputs.
 
 ### Databricks with S3 Backend
+
+Databricks authentication must be configured in the calling workflow via environment variables before invoking this action.
 
 ```yaml
 - name: Apply Terraform (Databricks)
   uses: subhamay-bhattacharyya-gha/tf-apply-action@main
+  env:
+    DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+    DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
   with:
-    backend-type: 's3'  # Uses S3 backend - AWS auth is auto-configured
+    backend-type: 's3'
     cloud-provider: 'databricks'
-    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}  # Your backend bucket
-    s3-region: ${{ vars.AWS_REGION }}  # Backend region
-    aws-region: ${{ vars.AWS_REGION }}  # Required for S3 backend access
-    aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Required for S3 backend access
-    databricks-host: ${{ secrets.DATABRICKS_HOST }}
-    databricks-token: ${{ secrets.DATABRICKS_TOKEN }}
+    s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}
+    s3-region: ${{ vars.AWS_REGION }}
+    aws-region: ${{ vars.AWS_REGION }}
+    aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
     terraform-dir: 'infra/databricks/tf'
     ci-pipeline: 'true'
 ```
@@ -174,11 +180,11 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 > **Note:** Configure these values in your GitHub repository:
 > - `AWS_REGION` (Variable): Your backend region (e.g., `us-east-1`)
 > - `AWS_TF_STATE_BUCKET` (Variable): Your S3 backend bucket name (e.g., `my-company-terraform-state`)
-> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN for S3 backend access (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
+> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN for S3 backend access
 > - `DATABRICKS_HOST` (Secret): Your Databricks workspace URL (e.g., `https://dbc-12345678-9abc.cloud.databricks.com`)
 > - `DATABRICKS_TOKEN` (Secret): Your Databricks personal access token
 > 
-> When using S3 backend with Databricks, AWS authentication is automatically configured to access the S3 bucket. Never hardcode credentials, bucket names, or regions in your workflow files.
+> Databricks authentication is handled via environment variables set in the calling workflow, not as action inputs.
 
 ### Platform Mode (Multi-Provider Deployment)
 
@@ -187,6 +193,15 @@ Platform mode automatically detects cloud provider directories under `infra/` an
 ```yaml
 - name: Apply Terraform (Platform Mode)
   uses: subhamay-bhattacharyya-gha/tf-apply-action@main
+  env:
+    # Snowflake authentication (if infra/snowflake exists)
+    SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+    SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+    SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+    SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+    # Databricks authentication (if infra/databricks exists)
+    DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+    DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
   with:
     backend-type: 's3'
     cloud-provider: 'platform'
@@ -202,26 +217,18 @@ Platform mode automatically detects cloud provider directories under `infra/` an
     azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
     azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    # Snowflake authentication (if infra/snowflake exists)
-    snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-    snowflake-user: ${{ secrets.SNOWFLAKE_USER }}
-    snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
-    snowflake-private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
-    # Databricks authentication (if infra/databricks exists)
-    databricks-host: ${{ secrets.DATABRICKS_HOST }}
-    databricks-token: ${{ secrets.DATABRICKS_TOKEN }}
     terraform-dir: 'infra'
     ci-pipeline: 'true'
 ```
 
 > **Note:** Platform mode automatically detects which cloud providers are configured based on directory structure:
-> - `infra/aws/` → Validates and uses AWS authentication
-> - `infra/gcp/` → Validates and uses GCP authentication
-> - `infra/azure/` → Validates and uses Azure authentication
-> - `infra/snowflake/` → Validates and uses Snowflake authentication
-> - `infra/databricks/` → Validates and uses Databricks authentication
+> - `infra/aws/` → Validates and uses AWS authentication (via action inputs)
+> - `infra/gcp/` → Validates and uses GCP authentication (via action inputs)
+> - `infra/azure/` → Validates and uses Azure authentication (via action inputs)
+> - `infra/snowflake/` → Uses Snowflake authentication (via workflow environment variables)
+> - `infra/databricks/` → Uses Databricks authentication (via workflow environment variables)
 > 
-> Only provide authentication inputs for the cloud providers you have directories for. The action will validate that required inputs are provided for each detected provider directory.
+> AWS, Azure, and GCP authentication are provided as action inputs. Snowflake and Databricks authentication must be set as environment variables in the calling workflow.
 
 ## Inputs
 
@@ -230,7 +237,7 @@ Platform mode automatically detects cloud provider directories under `infra/` an
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `backend-type` | Backend type (`s3` for S3-compatible backends, `remote` for HCP Terraform Cloud) | ❌ | `s3` |
-| `cloud-provider` | Target cloud provider or platform (`aws`, `azure`, `gcp`, `snowflake`, `databricks`, `platform`) | ✅ | - |
+| `cloud-provider` | Target cloud provider or platform (`aws`, `azure`, `gcp`, `snowflake`, `databricks`, `platform`). Snowflake/Databricks auth via workflow env vars. | ✅ | - |
 | `terraform-dir` | Relative path to Terraform configuration directory | ❌ | `tf` |
 | `release-tag` | Git release tag to check out | ❌ | `""` |
 | `ci-pipeline` | Include commit SHA in state key for CI/CD | ❌ | `false` |
@@ -276,21 +283,25 @@ Platform mode automatically detects cloud provider directories under `infra/` an
 | `gcp-wif-provider` | GCP Workload Identity Federation provider | ✅ (for GCP) | - |
 | `gcp-service-account` | GCP service account email for authentication | ✅ (for GCP) | - |
 
-### Snowflake Authentication Inputs (for cloud-provider: 'snowflake')
+### Snowflake Authentication (via Workflow Environment Variables)
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `snowflake-account` | Snowflake account identifier | ✅ (for Snowflake) | - |
-| `snowflake-user` | Snowflake user name | ✅ (for Snowflake) | - |
-| `snowflake-role` | Snowflake role name | ✅ (for Snowflake) | - |
-| `snowflake-private-key` | Snowflake private key for authentication | ✅ (for Snowflake) | - |
+Snowflake authentication is not handled by this action. Instead, set the following environment variables in your calling workflow:
 
-### Databricks Authentication Inputs (for cloud-provider: 'databricks')
+| Environment Variable | Description |
+|---------------------|-------------|
+| `SNOWFLAKE_ACCOUNT` | Snowflake account identifier |
+| `SNOWFLAKE_USER` | Snowflake user name |
+| `SNOWFLAKE_ROLE` | Snowflake role name |
+| `SNOWFLAKE_PRIVATE_KEY` | Snowflake private key for authentication |
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `databricks-host` | Databricks workspace URL | ✅ (for Databricks) | - |
-| `databricks-token` | Databricks personal access token | ✅ (for Databricks) | - |
+### Databricks Authentication (via Workflow Environment Variables)
+
+Databricks authentication is not handled by this action. Instead, set the following environment variables in your calling workflow:
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `DATABRICKS_HOST` | Databricks workspace URL |
+| `DATABRICKS_TOKEN` | Databricks personal access token |
 
 ## Prerequisites
 
@@ -492,6 +503,15 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # Snowflake authentication (if snowflake selected)
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+      SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+      # Databricks authentication (if databricks selected)
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
     steps:
       - name: Apply Terraform (HCP + Multi-Cloud)
         uses: subhamay-bhattacharyya-gha/tf-apply-action@main
@@ -509,28 +529,20 @@ jobs:
           # GCP authentication (if gcp selected)
           gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
           gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          # Snowflake authentication (if snowflake selected)
-          snowflake-account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          snowflake-user: ${{ secrets.SNOWFLAKE_USER }}
-          snowflake-role: ${{ secrets.SNOWFLAKE_ROLE }}
-          snowflake-private-key: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
-          # Databricks authentication (if databricks selected)
-          databricks-host: ${{ secrets.DATABRICKS_HOST }}
-          databricks-token: ${{ secrets.DATABRICKS_TOKEN }}
           terraform-dir: 'infra/gcp/tf'
 ```
 
 > **Note:** Configure these secrets in your GitHub repository settings:
 > - **AWS**: `AWS_ROLE_ARN`
 > - **GCP**: `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`
-> - **Snowflake**: `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_PRIVATE_KEY`
-> - **Databricks**: `DATABRICKS_HOST`, `DATABRICKS_TOKEN`
+> - **Snowflake**: `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_PRIVATE_KEY` (set as workflow env vars)
+> - **Databricks**: `DATABRICKS_HOST`, `DATABRICKS_TOKEN` (set as workflow env vars)
 > - **HCP Terraform Cloud**: `TF_API_TOKEN`
 > 
 > Also configure these GitHub repository variables:
 > - **AWS**: `AWS_TF_STATE_BUCKET`, `AWS_REGION`
 > 
-> Never commit sensitive values directly in your workflow files. Use GitHub repository secrets for authentication credentials and variables for non-sensitive configuration values.
+> Snowflake and Databricks authentication must be set as environment variables in the workflow, not as action inputs.
 
 ## Action Workflow
 
@@ -543,13 +555,13 @@ The action follows this optimized sequence:
 5. **🔧 Setup Terraform** - Installs and configures Terraform
 6. **📦 Download Terraform Plan Artifact** - Downloads the plan file from previous workflow
 7. **🔐 Configure Cloud Authentication** - Sets up OIDC authentication for AWS/Azure/GCP (runs for single provider, platform mode when inputs provided, or automatically when using S3 backend)
-8. **❄️ Configure Snowflake Authentication** - Sets up environment variables for Snowflake provider (runs for snowflake or platform mode when inputs provided)
-9. **🧱 Configure Databricks Authentication** - Sets up environment variables for Databricks provider (runs for databricks or platform mode when inputs provided)
-10. **☁️ Setup TFC Credentials** - Configures HCP Terraform Cloud credentials (if using remote backend)
-11. **🚀 Initialize Remote Backend** - Initializes HCP Terraform Cloud backend (if using remote backend)
-12. **🔑 Generate State Key** - Creates S3 state key with optional prefix (if using S3 backend)
-13. **📡 Initialize S3 Backend** - Initializes S3 backend with full configuration (if using S3 backend)
-14. **⚡ Terraform Apply with Summary** - Applies the plan and generates detailed summary
+8. **☁️ Setup TFC Credentials** - Configures HCP Terraform Cloud credentials (if using remote backend)
+9. **🚀 Initialize Remote Backend** - Initializes HCP Terraform Cloud backend (if using remote backend)
+10. **🔑 Generate State Key** - Creates S3 state key with optional prefix (if using S3 backend)
+11. **📡 Initialize S3 Backend** - Initializes S3 backend with full configuration (if using S3 backend)
+12. **⚡ Terraform Apply with Summary** - Applies the plan and generates detailed summary
+
+> **Note:** Snowflake and Databricks authentication must be configured in the calling workflow via environment variables before invoking this action.
 
 ## Output
 
