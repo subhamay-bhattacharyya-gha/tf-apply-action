@@ -33,7 +33,7 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
     s3-key-prefix: 'environments/prod'  # optional
     aws-region: ${{ vars.AWS_REGION }}
     aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-    terraform-dir: 'infra/aws/tf'
+    tf-config-path: 'infra/aws/tf'
     ci-pipeline: 'true'
 ```
 
@@ -59,7 +59,7 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
     azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
     azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    terraform-dir: 'infra/azure/tf'
+    tf-config-path: 'infra/azure/tf'
     ci-pipeline: 'true'
 ```
 
@@ -87,7 +87,7 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
     aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Required for S3 backend access
     gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
     gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-    terraform-dir: 'infra/gcp/tf'
+    tf-config-path: 'infra/gcp/tf'
     ci-pipeline: 'true'
 ```
 
@@ -111,7 +111,7 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
     tfc-token: ${{ secrets.TF_API_TOKEN }}
     aws-region: ${{ vars.AWS_REGION }}  # Required for cloud provider authentication
     aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-    terraform-dir: 'infra/aws/tf'
+    tf-config-path: 'infra/aws/tf'
     ci-pipeline: 'true'
 ```
 
@@ -141,7 +141,7 @@ Snowflake authentication must be configured in the calling workflow via environm
     s3-region: ${{ vars.AWS_REGION }}
     aws-region: ${{ vars.AWS_REGION }}
     aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-    terraform-dir: 'infra/snowflake/tf'
+    tf-config-path: 'infra/snowflake/tf'
     ci-pipeline: 'true'
 ```
 
@@ -173,7 +173,7 @@ Databricks authentication must be configured in the calling workflow via environ
     s3-region: ${{ vars.AWS_REGION }}
     aws-region: ${{ vars.AWS_REGION }}
     aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-    terraform-dir: 'infra/databricks/tf'
+    tf-config-path: 'infra/databricks/tf'
     ci-pipeline: 'true'
 ```
 
@@ -217,7 +217,7 @@ Platform mode automatically detects cloud provider directories under `infra/` an
     azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
     azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    terraform-dir: 'infra'
+    tf-config-path: 'infra'
     ci-pipeline: 'true'
 ```
 
@@ -238,7 +238,7 @@ Platform mode automatically detects cloud provider directories under `infra/` an
 |-------|-------------|----------|---------|
 | `backend-type` | Backend type (`s3` for S3-compatible backends, `remote` for HCP Terraform Cloud) | ❌ | `s3` |
 | `cloud-provider` | Target cloud provider or platform (`aws`, `azure`, `gcp`, `snowflake`, `databricks`, `platform`). Snowflake/Databricks auth via workflow env vars. | ✅ | - |
-| `terraform-dir` | Relative path to Terraform configuration directory | ❌ | `tf` |
+| `tf-config-path` | Relative path to Terraform configuration directory | ❌ | `tf` |
 | `release-tag` | Git release tag to check out | ❌ | `""` |
 | `ci-pipeline` | Include commit SHA in state key for CI/CD | ❌ | `false` |
 | `tf-plan-name` | Name of the Terraform plan file | ❌ | `terraform-plan` |
@@ -464,7 +464,7 @@ jobs:
           s3-key-prefix: 'environments/prod'
           aws-region: ${{ vars.AWS_REGION }}
           aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          terraform-dir: 'infra/aws/tf'
+          tf-config-path: 'infra/aws/tf'
           ci-pipeline: 'true'
 ```
 
@@ -529,7 +529,7 @@ jobs:
           # GCP authentication (if gcp selected)
           gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
           gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-          terraform-dir: 'infra/gcp/tf'
+          tf-config-path: 'infra/gcp/tf'
 ```
 
 > **Note:** Configure these secrets in your GitHub repository settings:
