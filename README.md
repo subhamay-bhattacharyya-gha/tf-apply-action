@@ -44,16 +44,18 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 > 
 > Never hardcode IAM role ARNs, bucket names, or regions in your workflow files. Store sensitive values like role ARNs as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
 
-### Azure with S3-Compatible Backend
+### Azure with S3 Backend
 
 ```yaml
 - name: Apply Terraform (Azure)
   uses: subhamay-bhattacharyya-gha/tf-apply-action@main
   with:
-    backend-type: 's3'  # Uses S3-compatible backend configuration
+    backend-type: 's3'  # Uses S3 backend - AWS auth is auto-configured
     cloud-provider: 'azure'
     s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}  # Your backend bucket
     s3-region: ${{ vars.AWS_REGION }}  # Backend region
+    aws-region: ${{ vars.AWS_REGION }}  # Required for S3 backend access
+    aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Required for S3 backend access
     azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
     azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -63,23 +65,26 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 
 > **Note:** Configure these values in your GitHub repository:
 > - `AWS_REGION` (Variable): Your backend region (e.g., `us-east-1`)
-> - `AWS_TF_STATE_BUCKET` (Variable): Your S3-compatible backend bucket name (e.g., `my-company-terraform-state`)
+> - `AWS_TF_STATE_BUCKET` (Variable): Your S3 backend bucket name (e.g., `my-company-terraform-state`)
+> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN for S3 backend access (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
 > - `AZURE_CLIENT_ID` (Secret): Your Azure application (client) ID
 > - `AZURE_TENANT_ID` (Secret): Your Azure tenant ID
 > - `AZURE_SUBSCRIPTION_ID` (Secret): Your Azure subscription ID
 > 
-> Never hardcode Azure credentials, bucket names, or regions in your workflow files. Store sensitive values like Azure IDs as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
+> When using S3 backend with Azure, AWS authentication is automatically configured to access the S3 bucket. Never hardcode credentials, bucket names, or regions in your workflow files.
 
-### GCP with S3-Compatible Backend
+### GCP with S3 Backend
 
 ```yaml
 - name: Apply Terraform (GCP)
   uses: subhamay-bhattacharyya-gha/tf-apply-action@main
   with:
-    backend-type: 's3'  # Uses S3-compatible backend configuration
+    backend-type: 's3'  # Uses S3 backend - AWS auth is auto-configured
     cloud-provider: 'gcp'
     s3-bucket: ${{ vars.AWS_TF_STATE_BUCKET }}  # Your backend bucket
     s3-region: ${{ vars.AWS_REGION }}  # Backend region
+    aws-region: ${{ vars.AWS_REGION }}  # Required for S3 backend access
+    aws-role-to-assume: ${{ secrets.AWS_ROLE_ARN }}  # Required for S3 backend access
     gcp-wif-provider: ${{ secrets.GCP_WIF_PROVIDER }}
     gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
     terraform-dir: 'infra/gcp/tf'
@@ -88,11 +93,12 @@ A comprehensive GitHub composite action for running `terraform apply` with suppo
 
 > **Note:** Configure these values in your GitHub repository:
 > - `AWS_REGION` (Variable): Your backend region (e.g., `us-east-1`)
-> - `AWS_TF_STATE_BUCKET` (Variable): Your S3-compatible backend bucket name (e.g., `my-company-terraform-state`)
+> - `AWS_TF_STATE_BUCKET` (Variable): Your S3 backend bucket name (e.g., `my-company-terraform-state`)
+> - `AWS_ROLE_ARN` (Secret): Your IAM role ARN for S3 backend access (e.g., `arn:aws:iam::123456789012:role/GitHubActionsRole`)
 > - `GCP_WIF_PROVIDER` (Secret): Your Workload Identity Federation provider (e.g., `projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider`)
 > - `GCP_SERVICE_ACCOUNT` (Secret): Your service account email (e.g., `my-service-account@my-project.iam.gserviceaccount.com`)
 > 
-> Never hardcode GCP credentials, bucket names, or regions in your workflow files. Store sensitive values like Workload Identity Federation providers and service accounts as GitHub repository secrets and non-sensitive values like regions and bucket names as repository variables for security.
+> When using S3 backend with GCP, AWS authentication is automatically configured to access the S3 bucket. Never hardcode credentials, bucket names, or regions in your workflow files.
 
 ### HCP Terraform Cloud Backend
 
@@ -240,12 +246,14 @@ Platform mode automatically detects cloud provider directories under `infra/` an
 |-------|-------------|----------|---------|
 | `tfc-token` | HCP Terraform Cloud API token | ✅ (for remote backend) | - |
 
-### AWS Authentication Inputs (for cloud-provider: 'aws')
+### AWS Authentication Inputs (for cloud-provider: 'aws' or backend-type: 's3')
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| `aws-region` | AWS region for authentication | ✅ (for AWS) | - |
-| `aws-role-to-assume` | AWS IAM role ARN to assume | ✅ (for AWS) | - |
+| `aws-region` | AWS region for authentication | ✅ (for AWS or S3 backend) | - |
+| `aws-role-to-assume` | AWS IAM role ARN to assume | ✅ (for AWS or S3 backend) | - |
+
+> **Note:** AWS authentication is automatically configured when using `backend-type: 's3'`, regardless of the `cloud-provider` setting. This ensures proper access to the S3 bucket for state storage.
 
 ### Azure Authentication Inputs (for cloud-provider: 'azure')
 

@@ -220,14 +220,14 @@ runs:
           echo "Error: Invalid backend-type '${{ inputs.backend-type }}'. Must be either 's3' or 'remote'"
           exit 1
         fi
-        echo "✓ Valid backend-type: ${{ inputs.backend-type }}"
+        echo "✅ Valid backend-type: ${{ inputs.backend-type }}"
 
         # Validate cloud-provider input
         if [[ "${{ inputs.cloud-provider }}" != "aws" && "${{ inputs.cloud-provider }}" != "gcp" && "${{ inputs.cloud-provider }}" != "azure" && "${{ inputs.cloud-provider }}" != "snowflake" && "${{ inputs.cloud-provider }}" != "databricks" && "${{ inputs.cloud-provider }}" != "platform" ]]; then
           echo "Error: Invalid cloud-provider '${{ inputs.cloud-provider }}'. Must be one of: aws, gcp, azure, snowflake, databricks, platform"
           exit 1
         fi
-        echo "✓ Valid cloud-provider: ${{ inputs.cloud-provider }}"
+        echo "✅ Valid cloud-provider: ${{ inputs.cloud-provider }}"
 
         # Validate backend configuration
         if [[ "${{ inputs.backend-type }}" == "s3" ]]; then
@@ -285,7 +285,7 @@ runs:
               if [[ -z "${{ inputs.aws-region }}" || -z "${{ inputs.aws-role-to-assume }}" ]]; then
                 VALIDATION_ERRORS="${VALIDATION_ERRORS}\n- AWS: aws-region and aws-role-to-assume are required"
               else
-                echo "  ✓ AWS inputs validated"
+                echo "  ✅ AWS inputs validated"
               fi
             fi
 
@@ -295,7 +295,7 @@ runs:
               if [[ -z "${{ inputs.gcp-wif-provider }}" || -z "${{ inputs.gcp-service-account }}" ]]; then
                 VALIDATION_ERRORS="${VALIDATION_ERRORS}\n- GCP: gcp-wif-provider and gcp-service-account are required"
               else
-                echo "  ✓ GCP inputs validated"
+                echo "  ✅ GCP inputs validated"
               fi
             fi
 
@@ -305,7 +305,7 @@ runs:
               if [[ -z "${{ inputs.azure-client-id }}" || -z "${{ inputs.azure-tenant-id }}" || -z "${{ inputs.azure-subscription-id }}" ]]; then
                 VALIDATION_ERRORS="${VALIDATION_ERRORS}\n- Azure: azure-client-id, azure-tenant-id, and azure-subscription-id are required"
               else
-                echo "  ✓ Azure inputs validated"
+                echo "  ✅ Azure inputs validated"
               fi
             fi
 
@@ -315,7 +315,7 @@ runs:
               if [[ -z "${{ inputs.snowflake-account }}" || -z "${{ inputs.snowflake-user }}" || -z "${{ inputs.snowflake-role }}" || -z "${{ inputs.snowflake-private-key }}" ]]; then
                 VALIDATION_ERRORS="${VALIDATION_ERRORS}\n- Snowflake: snowflake-account, snowflake-user, snowflake-role, and snowflake-private-key are required"
               else
-                echo "  ✓ Snowflake inputs validated"
+                echo "  ✅ Snowflake inputs validated"
               fi
             fi
 
@@ -325,7 +325,7 @@ runs:
               if [[ -z "${{ inputs.databricks-host }}" || -z "${{ inputs.databricks-token }}" ]]; then
                 VALIDATION_ERRORS="${VALIDATION_ERRORS}\n- Databricks: databricks-host and databricks-token are required"
               else
-                echo "  ✓ Databricks inputs validated"
+                echo "  ✅ Databricks inputs validated"
               fi
             fi
 
@@ -373,7 +373,7 @@ runs:
     #  Cloud Provider Authentication (OIDC)
     #############################################    
     - name: Configure AWS Authentication
-      if: (inputs.cloud-provider == 'aws') || (inputs.cloud-provider == 'platform' && inputs.aws-region != '' && inputs.aws-role-to-assume != '')
+      if: inputs.cloud-provider == 'aws' || inputs.backend-type == 's3' || (inputs.aws-role-to-assume != '' && inputs.aws-region != '')
       uses: aws-actions/configure-aws-credentials@v5
       with:
         aws-region: ${{ inputs.aws-region }}
@@ -406,7 +406,7 @@ runs:
         echo "${{ inputs.snowflake-private-key }}" > /tmp/snowflake_private_key.pem
         chmod 600 /tmp/snowflake_private_key.pem
         echo "SNOWFLAKE_PRIVATE_KEY_PATH=/tmp/snowflake_private_key.pem" >> $GITHUB_ENV
-        echo "✓ Snowflake authentication configured"
+        echo "✅ Snowflake authentication configured"
 
     - name: Configure Databricks Authentication
       if: (inputs.cloud-provider == 'databricks') || (inputs.cloud-provider == 'platform' && inputs.databricks-host != '' && inputs.databricks-token != '')
@@ -415,7 +415,7 @@ runs:
         echo "Setting up Databricks authentication environment variables..."
         echo "DATABRICKS_HOST=${{ inputs.databricks-host }}" >> $GITHUB_ENV
         echo "DATABRICKS_TOKEN=${{ inputs.databricks-token }}" >> $GITHUB_ENV
-        echo "✓ Databricks authentication configured"
+        echo "✅ Databricks authentication configured"
 
     #  Terraform Cloud Backend 
     #############################################
