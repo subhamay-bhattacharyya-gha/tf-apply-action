@@ -292,7 +292,7 @@ runs:
       uses: hashicorp/setup-terraform@v3
 
     - name: Download Terraform plan artifact
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.tf-plan-name }}
         path: ${{ github.workspace }}/${{ inputs.terraform-dir }}
