@@ -5,11 +5,11 @@ inputs:
 
   # Cloud Provider Selection
   cloud-provider:
-    description: "Cloud provider for backend storage. Options: 'aws', 'azure', 'gcp', 'snowflake', 'databricks'"
+    description: "Target cloud provider or platform (aws, gcp, azure, snowflake, databricks, platform). Note: Snowflake and Databricks authentication must be configured in the calling workflow via environment variables."
     required: true
     type: string
-  terraform-dir:
-    description: "Relative path to the directory containing Terraform configuration files (e.g., 'infra/aws/tf', 'infra/azure/tf', 'infra/gcp/tf')."
+  tf-config-path:
+    description: "Relative path from the repository root to the Terraform configuration directory. This is where your main.tf, variables.tf, and other Terraform files are located."
     required: false
     type: string
     default: "tf"
@@ -92,38 +92,6 @@ inputs:
     required: false
     type: string
 
-  # Snowflake Authentication Inputs
-  snowflake-account:
-    description: "Snowflake account identifier. Required when cloud-provider is 'snowflake'."
-    required: false
-    type: string
-
-  snowflake-user:
-    description: "Snowflake user name. Required when cloud-provider is 'snowflake'."
-    required: false
-    type: string
-
-  snowflake-role:
-    description: "Snowflake role name. Required when cloud-provider is 'snowflake'."
-    required: false
-    type: string
-
-  snowflake-private-key:
-    description: "Snowflake private key for authentication. Required when cloud-provider is 'snowflake'."
-    required: false
-    type: string
-
-  # Databricks Authentication Inputs
-  databricks-host:
-    description: "Databricks workspace URL. Required when cloud-provider is 'databricks'."
-    required: false
-    type: string
-
-  databricks-token:
-    description: "Databricks personal access token. Required when cloud-provider is 'databricks'."
-    required: false
-    type: string
-
   # Terraform artifacts
   tf-plan-name:
     description: "Name of the Terraform plan file"
@@ -152,12 +120,13 @@ runs:
     # Checkout Repo - Get the code
     # Setup Terraform - Install Terraform
     # Download Terraform plan artifact - Get the plan file
-    # Configure Cloud Authentication - OIDC authentication (AWS/Azure/GCP/Snowflake/Databricks)
+    # Configure Cloud Authentication - OIDC authentication (AWS/Azure/GCP)
     # Setup TFC Credentials - HCP Terraform Cloud credentials (if remote)
     # Initialize Remote Backend - HCP Terraform Cloud init (if remote)
     # Generate State Key - Create S3 state key (if S3)
     # Initialize S3 Backend - S3 backend init (if S3)
     # Terraform Apply with Summary - Execute the plan
+    # Note: Snowflake/Databricks auth must be set in calling workflow via env vars
 
     # Print all inputs for debug
     #############################################
@@ -168,7 +137,7 @@ runs:
         echo "=== DEBUG: All Action Inputs ==="
         echo "backend-type: ${{ inputs.backend-type }}"
         echo "cloud-provider: ${{ inputs.cloud-provider }}"
-        echo "terraform-dir: ${{ inputs.terraform-dir }}"
+        echo "tf-config-path: ${{ inputs.tf-config-path }}"
         echo "release-tag: ${{ inputs.release-tag }}"
         echo "ci-pipeline: ${{ inputs.ci-pipeline }}"
         echo "tf-plan-name: ${{ inputs.tf-plan-name }}"
@@ -196,15 +165,9 @@ runs:
         echo "azure-tenant-id: ${{ inputs.azure-tenant-id }}"
         echo "azure-subscription-id: ${{ inputs.azure-subscription-id }}"
         echo ""
-        echo "=== Snowflake Authentication Inputs ==="
-        echo "snowflake-account: ${{ inputs.snowflake-account }}"
-        echo "snowflake-user: ${{ inputs.snowflake-user }}"
-        echo "snowflake-role: ${{ inputs.snowflake-role }}"
-        echo "snowflake-private-key: [REDACTED - $(if [[ -n '${{ inputs.snowflake-private-key }}' ]]; then echo 'PROVIDED'; else echo 'NOT PROVIDED'; fi)]"
-        echo ""
-        echo "=== Databricks Authentication Inputs ==="
-        echo "databricks-host: ${{ inputs.databricks-host }}"
-        echo "databricks-token: [REDACTED - $(if [[ -n '${{ inputs.databricks-token }}' ]]; then echo 'PROVIDED'; else echo 'NOT PROVIDED'; fi)]"
+        echo "=== Snowflake/Databricks Note ==="
+        echo "Snowflake and Databricks authentication should be configured"
+        echo "in the calling workflow via environment variables."
         echo "================================="
 
     # Validate input configuration
@@ -213,6 +176,20 @@ runs:
       id: validate-config
       shell: bash
       run: |
+        # Validate backend-type input
+        if [[ "${{ inputs.backend-type }}" != "s3" && "${{ inputs.backend-type }}" != "remote" ]]; then
+          echo "Error: Invalid backend-type '${{ inputs.backend-type }}'. Must be either 's3' or 'remote'"
+          exit 1
+        fi
+        echo "✅ Valid backend-type: ${{ inputs.backend-type }}"
+
+        # Validate cloud-provider input
+        if [[ "${{ inputs.cloud-provider }}" != "aws" && "${{ inputs.cloud-provider }}" != "gcp" && "${{ inputs.cloud-provider }}" != "azure" && "${{ inputs.cloud-provider }}" != "snowflake" && "${{ inputs.cloud-provider }}" != "databricks" && "${{ inputs.cloud-provider }}" != "platform" ]]; then
+          echo "Error: Invalid cloud-provider '${{ inputs.cloud-provider }}'. Must be one of: aws, gcp, azure, snowflake, databricks, platform"
+          exit 1
+        fi
+        echo "✅ Valid cloud-provider: ${{ inputs.cloud-provider }}"
+
         # Validate backend configuration
         if [[ "${{ inputs.backend-type }}" == "s3" ]]; then
           if [[ -z "${{ inputs.s3-bucket }}" || -z "${{ inputs.s3-region }}" ]]; then
@@ -225,9 +202,6 @@ runs:
             exit 1
           fi
           echo "Using existing backend configuration from Terraform files"
-        else
-          echo "Error: backend-type must be either 's3' or 'remote'"
-          exit 1
         fi
 
         # Validate cloud provider configuration
@@ -251,20 +225,72 @@ runs:
             fi
             ;;
           "snowflake")
-            if [[ -z "${{ inputs.snowflake-account }}" || -z "${{ inputs.snowflake-user }}" || -z "${{ inputs.snowflake-role }}" || -z "${{ inputs.snowflake-private-key }}" ]]; then
-              echo "Error: snowflake-account, snowflake-user, snowflake-role, and snowflake-private-key are required when cloud-provider is 'snowflake'"
-              exit 1
-            fi
+            echo "Snowflake authentication must be configured in the calling workflow via environment variables:"
+            echo "  - SNOWFLAKE_ACCOUNT"
+            echo "  - SNOWFLAKE_USER"
+            echo "  - SNOWFLAKE_ROLE"
+            echo "  - SNOWFLAKE_PRIVATE_KEY_PATH (or SNOWFLAKE_PRIVATE_KEY)"
             ;;
           "databricks")
-            if [[ -z "${{ inputs.databricks-host }}" || -z "${{ inputs.databricks-token }}" ]]; then
-              echo "Error: databricks-host and databricks-token are required when cloud-provider is 'databricks'"
+            echo "Databricks authentication must be configured in the calling workflow via environment variables:"
+            echo "  - DATABRICKS_HOST"
+            echo "  - DATABRICKS_TOKEN"
+            ;;
+          "platform")
+            echo "Platform mode: Checking for cloud provider directories in infra/"
+            VALIDATION_ERRORS=""
+
+            # Check for AWS directory
+            if [[ -d "infra/aws" ]]; then
+              echo "Found infra/aws directory - validating AWS inputs..."
+              if [[ -z "${{ inputs.aws-region }}" || -z "${{ inputs.aws-role-to-assume }}" ]]; then
+                VALIDATION_ERRORS="${VALIDATION_ERRORS}\n- AWS: aws-region and aws-role-to-assume are required"
+              else
+                echo "  ✅ AWS inputs validated"
+              fi
+            fi
+
+            # Check for GCP directory
+            if [[ -d "infra/gcp" ]]; then
+              echo "Found infra/gcp directory - validating GCP inputs..."
+              if [[ -z "${{ inputs.gcp-wif-provider }}" || -z "${{ inputs.gcp-service-account }}" ]]; then
+                VALIDATION_ERRORS="${VALIDATION_ERRORS}\n- GCP: gcp-wif-provider and gcp-service-account are required"
+              else
+                echo "  ✅ GCP inputs validated"
+              fi
+            fi
+
+            # Check for Azure directory
+            if [[ -d "infra/azure" ]]; then
+              echo "Found infra/azure directory - validating Azure inputs..."
+              if [[ -z "${{ inputs.azure-client-id }}" || -z "${{ inputs.azure-tenant-id }}" || -z "${{ inputs.azure-subscription-id }}" ]]; then
+                VALIDATION_ERRORS="${VALIDATION_ERRORS}\n- Azure: azure-client-id, azure-tenant-id, and azure-subscription-id are required"
+              else
+                echo "  ✅ Azure inputs validated"
+              fi
+            fi
+
+            # Check for Snowflake directory
+            if [[ -d "infra/snowflake" ]]; then
+              echo "Found infra/snowflake directory"
+              echo "  ℹ️ Snowflake authentication must be configured in calling workflow via env vars"
+            fi
+
+            # Check for Databricks directory
+            if [[ -d "infra/databricks" ]]; then
+              echo "Found infra/databricks directory"
+              echo "  ℹ️ Databricks authentication must be configured in calling workflow via env vars"
+            fi
+
+            # Check if any validation errors occurred
+            if [[ -n "$VALIDATION_ERRORS" ]]; then
+              echo ""
+              echo "Error: Missing required inputs for detected platforms:"
+              echo -e "$VALIDATION_ERRORS"
               exit 1
             fi
-            ;;
-          *)
-            echo "Error: cloud-provider must be 'aws', 'gcp', 'azure', 'snowflake', or 'databricks'"
-            exit 1
+
+            echo "All detected platform inputs validated successfully"
             ;;
         esac
 
@@ -295,19 +321,19 @@ runs:
       uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.tf-plan-name }}
-        path: ${{ github.workspace }}/${{ inputs.terraform-dir }}
+        path: ${{ github.workspace }}/${{ inputs.tf-config-path }}
 
     #  Cloud Provider Authentication (OIDC)
     #############################################    
     - name: Configure AWS Authentication
-      if: inputs.cloud-provider == 'aws'
-      uses: aws-actions/configure-aws-credentials@v6
+      if: inputs.cloud-provider == 'aws' || inputs.backend-type == 's3' || (inputs.aws-role-to-assume != '' && inputs.aws-region != '')
+      uses: aws-actions/configure-aws-credentials@v5
       with:
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.aws-role-to-assume }}
 
     - name: Configure Azure Authentication
-      if: inputs.cloud-provider == 'azure'
+      if: (inputs.cloud-provider == 'azure') || (inputs.cloud-provider == 'platform' && inputs.azure-client-id != '' && inputs.azure-tenant-id != '' && inputs.azure-subscription-id != '')
       uses: azure/login@v2
       with:
         client-id: ${{ inputs.azure-client-id }}
@@ -315,7 +341,7 @@ runs:
         subscription-id: ${{ inputs.azure-subscription-id }}
 
     - name: Configure GCP Authentication (WIF)
-      if: inputs.cloud-provider == 'gcp'
+      if: (inputs.cloud-provider == 'gcp') || (inputs.cloud-provider == 'platform' && inputs.gcp-wif-provider != '' && inputs.gcp-service-account != '')
       uses: google-github-actions/auth@v3
       with:
         workload_identity_provider: ${{ inputs.gcp-wif-provider }}
@@ -343,7 +369,7 @@ runs:
       id: terraform-init-remote
       if: inputs.backend-type == 'remote'
       shell: bash
-      working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
+      working-directory: ${{ github.workspace }}/${{ inputs.tf-config-path }}
       run: |
         terraform init -input=false
 
@@ -353,7 +379,7 @@ runs:
       id: generate-tfstate-key
       if: inputs.backend-type == 's3'
       shell: bash
-      working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
+      working-directory: ${{ github.workspace }}/${{ inputs.tf-config-path }}
       run: |
         if [[ "${{ inputs.ci-pipeline }}" == "true" ]]; then
           state_key="${{ github.repository }}/${{ github.sha }}/terraform.tfstate"
@@ -366,7 +392,7 @@ runs:
       id: terraform-init-s3
       if: inputs.backend-type == 's3'
       shell: bash
-      working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
+      working-directory: ${{ github.workspace }}/${{ inputs.tf-config-path }}
       run: |
         # Build state key with optional prefix
         if [[ -n "${{ inputs.s3-key-prefix }}" ]]; then
@@ -387,7 +413,7 @@ runs:
     #############################################
     - name: Terraform Apply with Summary
       id: apply
-      working-directory: ${{ github.workspace }}/${{ inputs.terraform-dir }}
+      working-directory: ${{ github.workspace }}/${{ inputs.tf-config-path }}
       shell: bash
       run: |
         
@@ -434,15 +460,41 @@ runs:
               ;;
             "snowflake")
               echo "- **Provider**: Snowflake" >> "$GITHUB_STEP_SUMMARY"
-              echo "- **Account**: ${{ inputs.snowflake-account }}" >> "$GITHUB_STEP_SUMMARY"
-              echo "- **User**: ${{ inputs.snowflake-user }}" >> "$GITHUB_STEP_SUMMARY"
-              echo "- **Role**: ${{ inputs.snowflake-role }}" >> "$GITHUB_STEP_SUMMARY"
-              echo "- **Authentication**: Private Key" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Authentication**: Configured via workflow environment variables" >> "$GITHUB_STEP_SUMMARY"
               ;;
             "databricks")
               echo "- **Provider**: Databricks" >> "$GITHUB_STEP_SUMMARY"
-              echo "- **Host**: ${{ inputs.databricks-host }}" >> "$GITHUB_STEP_SUMMARY"
-              echo "- **Authentication**: Personal Access Token" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Authentication**: Configured via workflow environment variables" >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            "platform")
+              echo "- **Mode**: Multi-Platform Deployment" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "#### Detected Platforms:" >> "$GITHUB_STEP_SUMMARY"
+              
+              # Check for AWS directory
+              if [[ -d "${{ github.workspace }}/infra/aws" ]]; then
+                echo "- **AWS**: Region: ${{ inputs.aws-region }}, IAM Role: ${{ inputs.aws-role-to-assume }}" >> "$GITHUB_STEP_SUMMARY"
+              fi
+              
+              # Check for GCP directory
+              if [[ -d "${{ github.workspace }}/infra/gcp" ]]; then
+                echo "- **GCP**: Service Account: ${{ inputs.gcp-service-account }}" >> "$GITHUB_STEP_SUMMARY"
+              fi
+              
+              # Check for Azure directory
+              if [[ -d "${{ github.workspace }}/infra/azure" ]]; then
+                echo "- **Azure**: Client ID: ${{ inputs.azure-client-id }}, Subscription: ${{ inputs.azure-subscription-id }}" >> "$GITHUB_STEP_SUMMARY"
+              fi
+              
+              # Check for Snowflake directory
+              if [[ -d "${{ github.workspace }}/infra/snowflake" ]]; then
+                echo "- **Snowflake**: Authentication via workflow environment variables" >> "$GITHUB_STEP_SUMMARY"
+              fi
+              
+              # Check for Databricks directory
+              if [[ -d "${{ github.workspace }}/infra/databricks" ]]; then
+                echo "- **Databricks**: Authentication via workflow environment variables" >> "$GITHUB_STEP_SUMMARY"
+              fi
               ;;
           esac
         fi
