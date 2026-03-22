@@ -315,10 +315,10 @@ runs:
         ref: ${{ steps.set-ref.outputs.ref }}
 
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v4
 
     - name: Download Terraform plan artifact
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.tf-plan-name }}
         path: ${{ github.workspace }}/${{ inputs.tf-config-path }}
