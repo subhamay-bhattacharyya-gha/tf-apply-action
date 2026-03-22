@@ -1,3 +1,15 @@
+# [1.3.0](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/compare/v1.2.0...v1.3.0) (2026-03-22)
+
+
+### Bug Fixes
+
+* refactor Snowflake and Databricks authentication to use environment variables ([31ea0fc](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/commit/31ea0fc031bcb82a52fc18c531aa8949a347759c))
+
+
+### Features
+
+* add platform mode for multi-provider deployments ([ced0664](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/commit/ced0664fec617bed41c1071be92c399fe32e2f9c))
+
 # [1.2.0](https://github.com/subhamay-bhattacharyya-gha/tf-apply-action/compare/v1.1.1...v1.2.0) (2025-12-25)
 
 
