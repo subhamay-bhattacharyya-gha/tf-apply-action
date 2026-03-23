@@ -327,7 +327,7 @@ runs:
     #############################################    
     - name: Configure AWS Authentication
       if: inputs.cloud-provider == 'aws' || inputs.backend-type == 's3' || (inputs.aws-role-to-assume != '' && inputs.aws-region != '')
-      uses: aws-actions/configure-aws-credentials@v5
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.aws-role-to-assume }}
