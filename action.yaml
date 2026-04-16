@@ -418,7 +418,7 @@ runs:
       run: |
         
         # Check if the plan file exists
-        if [ ! -f tfplan.out ]; then
+        if [ ! -f ${{ inputs.tf-plan-file }}.binary ]; then
           echo "❌ Plan file not found. Exiting."
           exit 1
         fi
@@ -501,7 +501,7 @@ runs:
         echo "" >> "$GITHUB_STEP_SUMMARY"
 
         # Apply the saved plan
-        terraform apply -input=false -auto-approve tfplan.out
+        terraform apply -input=false -auto-approve ${{ inputs.tf-plan-file }}.binary
 
         echo "" >> "$GITHUB_STEP_SUMMARY"
         echo "### 📌 Affected Resources" >> "$GITHUB_STEP_SUMMARY"
@@ -510,7 +510,7 @@ runs:
         echo "|------------------|--------|---------------|----------------|" >> "$GITHUB_STEP_SUMMARY"
 
         # Parse affected resources from the plan
-        terraform show -json tfplan.out | jq -r '
+        terraform show -json ${{ inputs.tf-plan-file }}.binary | jq -r '
           .resource_changes[] | 
           select(.change.actions != ["no-op"]) |
           "| \(.address) | \(.change.actions[0]) | \(.type) | \(.name) |"
